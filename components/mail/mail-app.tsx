@@ -2134,6 +2134,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       draftId: null,
       replyTo: {
         subject: email.subject,
+        sourceClientAccountId: email.sourceClientAccountId,
         attachments: [payload.attachment],
       },
     });
@@ -4170,6 +4171,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                     subject: selectedEmail.subject,
                     ...getQuoteBodies(selectedEmail),
                     receivedAt: selectedEmail.receivedAt,
+                    sourceClientAccountId: selectedEmail.sourceClientAccountId,
                     attachments: selectedEmail.attachments,
                     messageId: selectedEmail.messageId,
                     inReplyTo: selectedEmail.inReplyTo,
