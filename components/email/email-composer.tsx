@@ -28,7 +28,7 @@ import { onUploadProgress } from "@/lib/upload-progress";
 import type { AlmostSavedDraft, OutgoingEmail, PluginAttachmentUpload, RecipientSuggestion } from "@/lib/plugin-types";
 import { useAuthStore } from "@/stores/auth-store";
 import { useIdentityStore } from "@/stores/identity-store";
-import { useProMultiAccountIdentities, stripCrossAccountIdentityPrefix } from "@/hooks/use-pro-multi-account-identities";
+import { useMultiAccountIdentities, stripCrossAccountIdentityPrefix } from "@/hooks/use-multi-account-identities";
 import { useAccountStore } from "@/stores/account-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { PluginSlot } from "@/components/plugins/plugin-slot";
@@ -315,18 +315,36 @@ export function EmailComposer({
   const signatureSeparatorEnabled = useSettingsStore((state) => state.signatureSeparatorEnabled);
   const requestReadReceiptDefault = useSettingsStore((state) => state.requestReadReceiptDefault);
   const activeIdentities = useIdentityStore((s) => s.identities);
-  // Pro shell: surface identities from every connected account, grouped
-  // for the From dropdown's <optgroup>s. Outside Pro this collapses to
-  // the active account's identities only.
-  const multiAccountIdentities = useProMultiAccountIdentities();
+  // Multi-account: surface identities from every connected account, grouped
+  // for the From dropdown's <optgroup>s. With one account this collapses to
+  // that account's identities only.
+  const multiAccountIdentities = useMultiAccountIdentities();
   const identities = multiAccountIdentities.enabled
     ? multiAccountIdentities.allIdentities
     : activeIdentities;
   const identityGroups = multiAccountIdentities.enabled
     ? multiAccountIdentities.groups
     : [];
-  const primaryIdentity = activeIdentities[0] ?? null;
   const activeAccountId = useAuthStore((s) => s.activeAccountId);
+  // Default sender: the active account's first identity. In multi-account mode
+  // it must be picked from the aggregated list, whose ids carry the
+  // "<localAccountId>::" namespace - the raw id from the identity store would
+  // match no <option> and leave the dropdown showing an address that is not
+  // the one `currentIdentity` resolves to.
+  const primaryIdentity = useMemo(() => {
+    if (!multiAccountIdentities.enabled) return activeIdentities[0] ?? null;
+    const first = activeIdentities[0];
+    // The active account may have no identity of its own (none configured, or
+    // still loading): fall back to the first address the dropdown offers, so
+    // the shown From is the one save/send actually routes through.
+    if (!first) return identities[0] ?? null;
+    return (
+      identities.find((identity) => {
+        const parts = stripCrossAccountIdentityPrefix(identity.id);
+        return parts.rawId === first.id && parts.localAccountId === activeAccountId;
+      }) ?? first
+    );
+  }, [multiAccountIdentities.enabled, activeIdentities, identities, activeAccountId]);
   // Automatic selection stays on the account the original message came
   // through (the active one, unless a unified view reached it via another
   // login): `composerClient` follows the chosen identity, and a reply/forward

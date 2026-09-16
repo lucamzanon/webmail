@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useAccountStore } from "@/stores/account-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useIdentityStore } from "@/stores/identity-store";
-import { useSettingsStore } from "@/stores/settings-store";
-import { useIsEmbedded } from "@/hooks/use-is-embedded";
 import type { Identity } from "@/lib/jmap/types";
 
 interface AccountIdentityGroup {
@@ -37,28 +35,29 @@ export function stripCrossAccountIdentityPrefix(id: string): { localAccountId: s
 }
 
 /**
- * Pro shell only: load identities from every connected account and group
- * them by local account so the composer's From dropdown can render an
- * <optgroup> per account - mirrors [[useProMultiAccountCalendars]] and
+ * Load identities from every connected account and group them by local
+ * account so the composer's From dropdown can render an <optgroup> per
+ * account - mirrors [[useProMultiAccountCalendars]] and
  * [[useProMultiAccountContacts]].
  *
- * Outside Pro / embedded mode the hook returns `enabled: false` and the
- * caller falls back to the active account's identities from
- * [[useIdentityStore]].
+ * Active in every shell (standard, Pro and embedded) as soon as more than one
+ * account is connected: picking the sending address across accounts is the
+ * same need whichever shell you are in, and the composer already routes
+ * save/send through the chosen identity's client. With a single account the
+ * hook returns `enabled: false` and the caller falls back to the active
+ * account's identities from [[useIdentityStore]].
  */
-export function useProMultiAccountIdentities(): {
+export function useMultiAccountIdentities(): {
   enabled: boolean;
   groups: AccountIdentityGroup[];
   /** Flat list across all accounts, useful for lookup-by-id. */
   allIdentities: Identity[];
 } {
-  const isEmbedded = useIsEmbedded();
-  const proInterface = useSettingsStore((s) => s.proInterface);
   const accounts = useAccountStore((s) => s.accounts);
   const activeAccountId = useAuthStore((s) => s.activeAccountId);
   const activeIdentities = useIdentityStore((s) => s.identities);
 
-  const enabled = (proInterface || isEmbedded) && accounts.filter(a => a.isConnected).length > 1;
+  const enabled = accounts.filter((a) => a.isConnected).length > 1;
 
   const [remoteIdentities, setRemoteIdentities] = useState<Record<string, Identity[]>>({});
 

@@ -7,7 +7,7 @@ import { ErrorBoundary, EmailViewerErrorFallback } from "@/components/error";
 import { useAuthStore } from "@/stores/auth-store";
 import { useEmailStore } from "@/stores/email-store";
 import { useIdentityStore } from "@/stores/identity-store";
-import { useProMultiAccountIdentities } from "@/hooks/use-pro-multi-account-identities";
+import { useMultiAccountIdentities } from "@/hooks/use-multi-account-identities";
 import { findDraftIdentityId } from "@/lib/reply-identity";
 import { useSettingsStore } from "@/stores/settings-store";
 import { toast } from "@/stores/toast-store";
@@ -90,7 +90,7 @@ export function ProEmailView({ emailId, client: clientOverride, accountId, onLoa
   const setEmailKeywordsLocal = useEmailStore((s) => s.setEmailKeywordsLocal);
   const mailboxes = useEmailStore((s) => s.mailboxes);
   const identities = useIdentityStore((s) => s.identities);
-  const multiAccountIdentities = useProMultiAccountIdentities();
+  const multiAccountIdentities = useMultiAccountIdentities();
 
   const openComposeTab = useProTabStore((s) => s.openComposeTab);
 

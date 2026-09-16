@@ -126,6 +126,7 @@
 - Run several accounts at once and switch instantly, each keeping its own session. The 5-account cap lifts on HTTP/2 servers; on HTTP/1.1, browser connection pooling still sets the limit.
 - An account switcher showing connection status, and a default account
 - Multiple sender identities, each with its own signature, synced automatically and badged in the viewer and list
+- With more than one account connected, the composer's From field lists every account's addresses, grouped by account, and save/send route through the account you pick
 - Signature above or below the quoted text
 - Sub-addressing (`user+tag@domain.com`), delimiter configurable, with tag suggestions drawn from context
 - Shared folders across accounts

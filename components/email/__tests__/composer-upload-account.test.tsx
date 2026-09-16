@@ -25,8 +25,8 @@ vi.mock('@/hooks/use-focus-trap', () => ({
   useFocusTrap: () => ({ current: null }),
 }));
 // The selected identity is namespaced with the local account that owns it.
-vi.mock('@/hooks/use-pro-multi-account-identities', () => ({
-  useProMultiAccountIdentities: () => ({ enabled: false, groups: [], allIdentities: [] }),
+vi.mock('@/hooks/use-multi-account-identities', () => ({
+  useMultiAccountIdentities: () => ({ enabled: false, groups: [], allIdentities: [] }),
   stripCrossAccountIdentityPrefix: (id: string) => {
     const idx = id.indexOf('::');
     return idx === -1
