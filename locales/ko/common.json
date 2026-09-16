@@ -3601,6 +3601,10 @@
     "open_full": "열기",
     "view_label": "보기"
   },
+  "build_refresh": {
+    "title": "A new version of the webmail was published.",
+    "reload": "Reload"
+  },
   "account_vault": {
     "title": "Saved accounts",
     "manage": "Manage saved accounts",

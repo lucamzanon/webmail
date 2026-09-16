@@ -3601,6 +3601,10 @@
     "open_full": "Deschide",
     "view_label": "Vizualizare"
   },
+  "build_refresh": {
+    "title": "A new version of the webmail was published.",
+    "reload": "Reload"
+  },
   "account_vault": {
     "title": "Saved accounts",
     "manage": "Manage saved accounts",

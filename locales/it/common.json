@@ -3601,6 +3601,10 @@
     "open_full": "Apri",
     "view_label": "Vista"
   },
+  "build_refresh": {
+    "title": "È stata pubblicata una nuova versione della webmail.",
+    "reload": "Ricarica"
+  },
   "account_vault": {
     "title": "Account salvati",
     "manage": "Gestisci account salvati",

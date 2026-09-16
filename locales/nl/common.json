@@ -3601,6 +3601,10 @@
     "open_full": "Openen",
     "view_label": "Weergave"
   },
+  "build_refresh": {
+    "title": "A new version of the webmail was published.",
+    "reload": "Reload"
+  },
   "account_vault": {
     "title": "Saved accounts",
     "manage": "Manage saved accounts",
