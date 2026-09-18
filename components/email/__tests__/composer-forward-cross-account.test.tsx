@@ -1,19 +1,19 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { EmailComposer } from '../email-composer';
+import { useAuthStore } from '@/stores/auth-store';
 
-// ─── Heavy component mocks (mirrors reply-addressing.test.tsx) ────────────────
+// Forwarding a message reached through another login (unified view) carried
+// its attachments along as that account's part blobIds, while the forward was
+// saved and sent through the composing account. Stalwart scopes blobs per
+// account, so Email/set failed with blobNotFound. The parts must be copied to
+// the composing account first - once, and only when the accounts differ.
 
-const editorKeyDown = vi.hoisted(() => vi.fn());
+// ─── Heavy component mocks (mirrors composer-draft-attachments.test.tsx) ─────
 
 vi.mock('@/components/email/rich-text-editor', () => ({
-  RichTextEditor: () => React.createElement('div', {
-    'data-testid': 'rich-text-editor',
-    onKeyDown: (event: React.KeyboardEvent) => {
-      if (!event.defaultPrevented) editorKeyDown();
-    },
-  }),
+  RichTextEditor: () => React.createElement('div', { 'data-testid': 'rich-text-editor' }),
 }));
 
 vi.mock('@/components/plugins/plugin-slot', () => ({ PluginSlot: () => null }));
@@ -85,8 +85,6 @@ vi.mock('@/stores/email-store', () => {
   return { useEmailStore: hook };
 });
 
-const updateSetting = vi.fn();
-
 vi.mock('@/stores/settings-store', () => {
   const state = {
     timeFormat: '24h',
@@ -102,7 +100,7 @@ vi.mock('@/stores/settings-store', () => {
     requestReadReceiptDefault: false,
     addTrustedSender: () => {},
     trustedSendersAddressBook: null,
-    updateSetting: (...args: unknown[]) => updateSetting(...args),
+    updateSetting: () => {},
   };
   const hook = (sel?: (s: typeof state) => unknown) =>
     typeof sel === 'function' ? sel(state) : state;
@@ -146,6 +144,7 @@ vi.mock('@/lib/plugin-hooks', () => ({
     getRecipientSuggestions: { call: async () => [] },
     onRecipientChipsChange: { transform: async (chips: unknown) => chips },
     onDraftChange: { emit: () => {} },
+    onBeforeDraftAutoSave: { transform: async (draft: unknown) => draft },
     onBeforeEmailSend: { intercept: async () => true },
     onComposeSend: { intercept: async () => true },
     onTransformOutgoingEmail: { transform: async (email: unknown) => email },
@@ -168,6 +167,8 @@ vi.mock('@/lib/email-threading', () => ({
 vi.mock('@/lib/signature-utils', () => ({
   appendPlainTextSignature: (body: string) => body,
   getPlainTextSignature: () => '',
+  plainTextBodyHasSignature: () => false,
+  plainTextBodyWithoutSignature: (body: string) => body,
 }));
 vi.mock('@/lib/sub-addressing', () => ({ generateSubAddress: () => '' }));
 vi.mock('@/lib/debug', () => ({ debug: { log: () => {}, warn: () => {}, error: () => {} } }));
@@ -179,97 +180,104 @@ vi.mock('@/lib/template-utils', () => ({ substitutePlaceholders: (s: string) => 
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-/** A ready-to-send draft with everything but a subject. */
-const DRAFT_WITHOUT_SUBJECT = {
-  to: 'bob@example.com',
-  cc: '',
-  bcc: '',
-  subject: '',
-  body: '<p>Hello there</p>',
-  showCc: false,
-  showBcc: false,
-  selectedIdentityId: 'id-me',
-  subAddressTag: '',
-  mode: 'compose' as const,
-  draftId: null,
-};
+const SCAN = { blobId: 'blob-src', name: 'scan.pdf', type: 'application/pdf', size: 5 };
 
-const sendButton = () => screen.getAllByTestId('composer-send')[0] as HTMLButtonElement;
+function mockClients() {
+  const composingClient = {
+    uploadBlob: vi.fn().mockResolvedValue({ blobId: 'blob-copied' }),
+    createDraft: vi.fn()
+      .mockResolvedValueOnce('draft-1')
+      .mockResolvedValueOnce('draft-2'),
+    getEmail: vi.fn().mockResolvedValue({ id: 'draft-1', attachments: [] }),
+    hasDelayedSend: () => false,
+    getMaxDelayedSend: () => 0,
+  };
+  const sourceClient = {
+    fetchBlobArrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(5)),
+  };
+  useAuthStore.setState({
+    client: composingClient as never,
+    activeAccountId: 'acct-active' as never,
+    getClientForAccount: ((id: string) => (
+      id === 'acct-src' ? sourceClient : id === 'acct-active' ? composingClient : undefined
+    )) as never,
+  });
+  return { composingClient, sourceClient };
+}
 
-describe('composer empty subject warning', () => {
+async function forwardAndAutosave(sourceClientAccountId?: string) {
+  render(
+    <EmailComposer
+      mode="forward"
+      replyTo={{ subject: 'Scans', sourceClientAccountId, attachments: [SCAN] }}
+      onClose={vi.fn()}
+    />,
+  );
+  // Make the draft dirty so the autosave debounce arms.
+  const subject = screen.getByDisplayValue(/Scans/);
+  fireEvent.change(subject, { target: { value: 'Scans for you' } });
+  await act(async () => { await vi.advanceTimersByTimeAsync(2500); });
+}
+
+describe('forwarding a message from another account', () => {
   beforeEach(() => {
-    updateSetting.mockClear();
-    editorKeyDown.mockClear();
+    vi.useFakeTimers();
   });
 
-  it('keeps Send enabled when the subject is empty', () => {
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} />);
-    expect(sendButton()).not.toBeDisabled();
+  afterEach(() => {
+    vi.useRealTimers();
+    useAuthStore.setState({
+      client: null,
+      activeAccountId: null,
+      getClientForAccount: (() => undefined) as never,
+    });
+    vi.clearAllMocks();
   });
 
-  it('asks for confirmation instead of sending', async () => {
-    const onSend = vi.fn();
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} onSend={onSend} />);
+  it('copies the forwarded parts to the composing account before saving', async () => {
+    const { composingClient, sourceClient } = mockClients();
+    await forwardAndAutosave('acct-src');
 
-    fireEvent.click(sendButton());
+    expect(sourceClient.fetchBlobArrayBuffer).toHaveBeenCalledWith('blob-src', 'scan.pdf', 'application/pdf');
+    expect(composingClient.uploadBlob).toHaveBeenCalledTimes(1);
+    const uploaded = composingClient.uploadBlob.mock.calls[0][0] as File;
+    expect(uploaded.name).toBe('scan.pdf');
+    expect(uploaded.type).toBe('application/pdf');
+    expect(composingClient.createDraft).toHaveBeenCalledTimes(1);
+    expect(composingClient.createDraft.mock.calls[0][8]).toEqual([
+      { blobId: 'blob-copied', name: 'scan.pdf', type: 'application/pdf', size: 5 },
+    ]);
 
-    expect(await screen.findByText('empty_subject.title')).toBeInTheDocument();
-    expect(onSend).not.toHaveBeenCalled();
+    // A later save reuses the copy instead of copying again.
+    fireEvent.change(screen.getByDisplayValue('Scans for you'), { target: { value: 'Scans, again' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(2500); });
+    expect(composingClient.createDraft).toHaveBeenCalledTimes(2);
+    expect(composingClient.createDraft.mock.calls[1][8]).toEqual([
+      { blobId: 'blob-copied', name: 'scan.pdf', type: 'application/pdf', size: 5 },
+    ]);
+    expect(sourceClient.fetchBlobArrayBuffer).toHaveBeenCalledTimes(1);
+    expect(composingClient.uploadBlob).toHaveBeenCalledTimes(1);
   });
 
-  it('intercepts Ctrl+Enter before the editor inserts a newline', async () => {
-    const onSend = vi.fn();
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} onSend={onSend} />);
+  it('references the original blobs when the message is on the composing account', async () => {
+    const { composingClient, sourceClient } = mockClients();
+    await forwardAndAutosave('acct-active');
 
-    fireEvent.keyDown(screen.getByTestId('rich-text-editor'), { key: 'Enter', ctrlKey: true });
-
-    expect(await screen.findByText('empty_subject.title')).toBeInTheDocument();
-    expect(editorKeyDown).not.toHaveBeenCalled();
-    expect(onSend).not.toHaveBeenCalled();
+    expect(sourceClient.fetchBlobArrayBuffer).not.toHaveBeenCalled();
+    expect(composingClient.uploadBlob).not.toHaveBeenCalled();
+    expect(composingClient.createDraft.mock.calls[0][8]).toEqual([
+      { blobId: 'blob-src', name: 'scan.pdf', type: 'application/pdf', size: 5 },
+    ]);
   });
 
-  it('sends with an empty subject once confirmed', async () => {
-    const onSend = vi.fn();
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} onSend={onSend} />);
+  it('leaves the blobs alone when the originating account is unknown', async () => {
+    const { composingClient, sourceClient } = mockClients();
+    await forwardAndAutosave(undefined);
 
-    fireEvent.click(sendButton());
-    fireEvent.click(await screen.findByText('empty_subject.send_anyway'));
-
-    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
-    expect(onSend.mock.calls[0][0]).toMatchObject({ subject: '', to: ['bob@example.com'] });
-    expect(updateSetting).not.toHaveBeenCalled();
-  });
-
-  it('turns the warning off when "don\'t ask again" is checked', async () => {
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} onSend={vi.fn()} />);
-
-    fireEvent.click(sendButton());
-    fireEvent.click(await screen.findByText('empty_subject.dont_ask_again'));
-    fireEvent.click(screen.getByText('empty_subject.send_anyway'));
-
-    await waitFor(() =>
-      expect(updateSetting).toHaveBeenCalledWith('emptySubjectWarningEnabled', false)
-    );
-  });
-
-  it('goes back to editing without sending', async () => {
-    const onSend = vi.fn();
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} onSend={onSend} />);
-
-    fireEvent.click(sendButton());
-    fireEvent.click(await screen.findByText('empty_subject.back'));
-
-    await waitFor(() => expect(screen.queryByText('empty_subject.title')).not.toBeInTheDocument());
-    expect(onSend).not.toHaveBeenCalled();
-  });
-
-  it('still sends normally when a subject is present', async () => {
-    const onSend = vi.fn();
-    render(<EmailComposer initialData={{ ...DRAFT_WITHOUT_SUBJECT, subject: 'Lunch' }} onSend={onSend} />);
-
-    fireEvent.click(sendButton());
-
-    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
-    expect(screen.queryByText('empty_subject.title')).not.toBeInTheDocument();
+    expect(sourceClient.fetchBlobArrayBuffer).not.toHaveBeenCalled();
+    expect(composingClient.uploadBlob).not.toHaveBeenCalled();
+    expect(composingClient.createDraft.mock.calls[0][8]).toEqual([
+      { blobId: 'blob-src', name: 'scan.pdf', type: 'application/pdf', size: 5 },
+    ]);
   });
 });

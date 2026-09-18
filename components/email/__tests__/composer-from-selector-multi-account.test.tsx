@@ -1,19 +1,21 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { EmailComposer } from '../email-composer';
+import { useAuthStore } from '@/stores/auth-store';
+import { useIdentityStore } from '@/stores/identity-store';
 
-// ─── Heavy component mocks (mirrors reply-addressing.test.tsx) ────────────────
+// Gmail-style sender picker: with more than one account connected the From
+// field lists every account's identities, grouped by account. Previously this
+// only happened in the Pro shell. The default selection must be the ACTIVE
+// account's identity as it appears in that aggregated list - i.e. carrying the
+// "<localAccountId>::" namespace - or the dropdown shows one address while
+// the composer sends through another.
 
-const editorKeyDown = vi.hoisted(() => vi.fn());
+// ─── Heavy component mocks (mirrors composer-draft-attachments.test.tsx) ─────
 
 vi.mock('@/components/email/rich-text-editor', () => ({
-  RichTextEditor: () => React.createElement('div', {
-    'data-testid': 'rich-text-editor',
-    onKeyDown: (event: React.KeyboardEvent) => {
-      if (!event.defaultPrevented) editorKeyDown();
-    },
-  }),
+  RichTextEditor: () => React.createElement('div', { 'data-testid': 'rich-text-editor' }),
 }));
 
 vi.mock('@/components/plugins/plugin-slot', () => ({ PluginSlot: () => null }));
@@ -24,9 +26,42 @@ vi.mock('@/components/files/file-preview-modal', () => ({ FilePreviewModal: () =
 vi.mock('@/hooks/use-focus-trap', () => ({
   useFocusTrap: () => ({ current: null }),
 }));
+// Two connected accounts: the hook aggregates their identities and namespaces
+// every id with the local account that owns it. Mutable so a test can drop the
+// active account's group (an account with no identity of its own).
+const { identityGroups } = vi.hoisted(() => ({
+  identityGroups: {
+    current: [
+      {
+        localAccountId: 'acct-1',
+        accountLabel: 'Work',
+        identities: [
+          { id: 'acct-1::id-1', email: 'me@work.example', name: 'Me' },
+          { id: 'acct-1::id-1b', email: 'info@work.example', name: 'Info' },
+        ],
+      },
+      {
+        localAccountId: 'acct-2',
+        accountLabel: 'Personal',
+        identities: [{ id: 'acct-2::id-other', email: 'other@example.com', name: 'Other' }],
+      },
+    ],
+  },
+}));
+const ALL_GROUPS = identityGroups.current;
+
 vi.mock('@/hooks/use-multi-account-identities', () => ({
-  useMultiAccountIdentities: () => ({ enabled: false, groups: [], allIdentities: [] }),
-  stripCrossAccountIdentityPrefix: (id: string) => ({ localAccountId: null, rawId: id }),
+  useMultiAccountIdentities: () => ({
+    enabled: true,
+    groups: identityGroups.current,
+    allIdentities: identityGroups.current.flatMap((g) => g.identities),
+  }),
+  stripCrossAccountIdentityPrefix: (id: string) => {
+    const idx = id.indexOf('::');
+    return idx === -1
+      ? { localAccountId: null, rawId: id }
+      : { localAccountId: id.slice(0, idx), rawId: id.slice(idx + 2) };
+  },
 }));
 
 // ─── Store mocks ──────────────────────────────────────────────────────────────
@@ -54,8 +89,13 @@ vi.mock('@/stores/auth-store', () => {
 
 vi.mock('@/stores/identity-store', () => {
   const state = {
-    identities: [{ id: 'id-me', email: 'me@example.com', name: 'Me' }],
-    defaultIdentityId: 'id-me',
+    // The identity store only ever holds the ACTIVE account's identities, with
+    // the server's raw ids (no namespace).
+    identities: [
+      { id: 'id-1', email: 'me@work.example', name: 'Me' },
+      { id: 'id-1b', email: 'info@work.example', name: 'Info' },
+    ],
+    defaultIdentityId: 'id-1',
   };
   const hook = (sel?: (s: typeof state) => unknown) =>
     typeof sel === 'function' ? sel(state) : state;
@@ -85,8 +125,6 @@ vi.mock('@/stores/email-store', () => {
   return { useEmailStore: hook };
 });
 
-const updateSetting = vi.fn();
-
 vi.mock('@/stores/settings-store', () => {
   const state = {
     timeFormat: '24h',
@@ -102,7 +140,7 @@ vi.mock('@/stores/settings-store', () => {
     requestReadReceiptDefault: false,
     addTrustedSender: () => {},
     trustedSendersAddressBook: null,
-    updateSetting: (...args: unknown[]) => updateSetting(...args),
+    updateSetting: () => {},
   };
   const hook = (sel?: (s: typeof state) => unknown) =>
     typeof sel === 'function' ? sel(state) : state;
@@ -146,19 +184,39 @@ vi.mock('@/lib/plugin-hooks', () => ({
     getRecipientSuggestions: { call: async () => [] },
     onRecipientChipsChange: { transform: async (chips: unknown) => chips },
     onDraftChange: { emit: () => {} },
+    onBeforeDraftAutoSave: { transform: async (draft: unknown) => draft },
     onBeforeEmailSend: { intercept: async () => true },
     onComposeSend: { intercept: async () => true },
     onTransformOutgoingEmail: { transform: async (email: unknown) => email },
+    onBeforeAttachmentUpload: { intercept: async () => true },
+    onBeforeBlobUpload: { transform: async (fileId: unknown) => fileId },
+    onAfterAttachmentUpload: { emit: () => {} },
   },
   contactHooks: {
     search: { call: async () => [] },
     onProvideRecipientSuggestions: { transform: async (initial: unknown) => initial },
   },
+  isExternalAttachmentResult: () => false,
+}));
+
+vi.mock('@/lib/plugin-storage', () => ({
+  fileStorage: {
+    saveFile: async () => {},
+    getFile: async () => null,
+    deleteFile: async () => {},
+  },
+}));
+
+vi.mock('@/lib/upload-progress', () => ({
+  onUploadProgress: () => () => {},
 }));
 
 vi.mock('@/lib/email-sanitization', () => ({
   sanitizeSignatureHtml: (v: string) => v,
+  sanitizeSignatureHtmlForDisplay: (v: string) => v,
   sanitizeEmailHtml: (v: string) => v,
+  sanitizePluginBodyHtml: (v: string) => v,
+  escapeHtml: (v: string) => v,
   parseHtmlSafely: (html: string) => new DOMParser().parseFromString(html, 'text/html'),
 }));
 
@@ -168,8 +226,10 @@ vi.mock('@/lib/email-threading', () => ({
 vi.mock('@/lib/signature-utils', () => ({
   appendPlainTextSignature: (body: string) => body,
   getPlainTextSignature: () => '',
+  plainTextBodyHasSignature: () => false,
+  plainTextBodyWithoutSignature: (body: string) => body,
 }));
-vi.mock('@/lib/sub-addressing', () => ({ generateSubAddress: () => '' }));
+vi.mock('@/lib/sub-addressing', () => ({ generateSubAddress: (email: string) => email }));
 vi.mock('@/lib/debug', () => ({ debug: { log: () => {}, warn: () => {}, error: () => {} } }));
 vi.mock('@/components/email/quoted-html', () => ({
   buildQuotedHtmlBlock: () => '',
@@ -179,97 +239,95 @@ vi.mock('@/lib/template-utils', () => ({ substitutePlaceholders: (s: string) => 
 
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
-/** A ready-to-send draft with everything but a subject. */
-const DRAFT_WITHOUT_SUBJECT = {
-  to: 'bob@example.com',
-  cc: '',
-  bcc: '',
-  subject: '',
-  body: '<p>Hello there</p>',
-  showCc: false,
-  showBcc: false,
-  selectedIdentityId: 'id-me',
-  subAddressTag: '',
-  mode: 'compose' as const,
-  draftId: null,
+const ACTIVE_IDENTITIES = [
+  { id: 'id-1', email: 'me@work.example', name: 'Me' },
+  { id: 'id-1b', email: 'info@work.example', name: 'Info' },
+];
+
+const activeClient = {
+  uploadBlob: vi.fn(),
+  createDraft: vi.fn(),
+  hasDelayedSend: () => false,
+  getMaxDelayedSend: () => 0,
 };
 
-const sendButton = () => screen.getAllByTestId('composer-send')[0] as HTMLButtonElement;
+function renderComposer() {
+  return render(<EmailComposer onClose={vi.fn()} />);
+}
 
-describe('composer empty subject warning', () => {
+describe('composer From selector with several accounts', () => {
   beforeEach(() => {
-    updateSetting.mockClear();
-    editorKeyDown.mockClear();
+    useAuthStore.setState({
+      client: activeClient as never,
+      activeAccountId: 'acct-1' as never,
+      getClientForAccount: (() => undefined) as never,
+    });
   });
 
-  it('keeps Send enabled when the subject is empty', () => {
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} />);
-    expect(sendButton()).not.toBeDisabled();
+  afterEach(() => {
+    useAuthStore.setState({ client: null, activeAccountId: null as never });
+    useIdentityStore.setState({ identities: ACTIVE_IDENTITIES as never });
+    identityGroups.current = ALL_GROUPS;
+    vi.clearAllMocks();
   });
 
-  it('asks for confirmation instead of sending', async () => {
-    const onSend = vi.fn();
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} onSend={onSend} />);
+  it('groups every connected account\'s addresses under the account label', () => {
+    const { getByTestId } = renderComposer();
 
-    fireEvent.click(sendButton());
-
-    expect(await screen.findByText('empty_subject.title')).toBeInTheDocument();
-    expect(onSend).not.toHaveBeenCalled();
+    const select = getByTestId('composer-from') as HTMLSelectElement;
+    expect(select.tagName).toBe('SELECT');
+    expect(Array.from(select.querySelectorAll('optgroup')).map((g) => g.label)).toEqual([
+      'Work',
+      'Personal',
+    ]);
+    expect(Array.from(select.options).map((o) => o.value)).toEqual([
+      'acct-1::id-1',
+      'acct-1::id-1b',
+      'acct-2::id-other',
+    ]);
   });
 
-  it('intercepts Ctrl+Enter before the editor inserts a newline', async () => {
-    const onSend = vi.fn();
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} onSend={onSend} />);
+  it('defaults to the active account identity by its namespaced id', () => {
+    const { getByTestId } = renderComposer();
 
-    fireEvent.keyDown(screen.getByTestId('rich-text-editor'), { key: 'Enter', ctrlKey: true });
-
-    expect(await screen.findByText('empty_subject.title')).toBeInTheDocument();
-    expect(editorKeyDown).not.toHaveBeenCalled();
-    expect(onSend).not.toHaveBeenCalled();
+    const select = getByTestId('composer-from') as HTMLSelectElement;
+    expect(select.value).toBe('acct-1::id-1');
   });
 
-  it('sends with an empty subject once confirmed', async () => {
-    const onSend = vi.fn();
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} onSend={onSend} />);
-
-    fireEvent.click(sendButton());
-    fireEvent.click(await screen.findByText('empty_subject.send_anyway'));
-
-    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
-    expect(onSend.mock.calls[0][0]).toMatchObject({ subject: '', to: ['bob@example.com'] });
-    expect(updateSetting).not.toHaveBeenCalled();
-  });
-
-  it('turns the warning off when "don\'t ask again" is checked', async () => {
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} onSend={vi.fn()} />);
-
-    fireEvent.click(sendButton());
-    fireEvent.click(await screen.findByText('empty_subject.dont_ask_again'));
-    fireEvent.click(screen.getByText('empty_subject.send_anyway'));
-
-    await waitFor(() =>
-      expect(updateSetting).toHaveBeenCalledWith('emptySubjectWarningEnabled', false)
+  it('keeps an explicitly chosen identity from another account selected', () => {
+    const { getByTestId } = render(
+      <EmailComposer
+        initialData={{
+          to: '',
+          cc: '',
+          bcc: '',
+          subject: '',
+          body: '',
+          showCc: false,
+          showBcc: false,
+          selectedIdentityId: 'acct-2::id-other',
+          subAddressTag: '',
+          mode: 'compose',
+          draftId: null,
+        }}
+        onClose={vi.fn()}
+      />,
     );
+
+    expect((getByTestId('composer-from') as HTMLSelectElement).value).toBe('acct-2::id-other');
   });
 
-  it('goes back to editing without sending', async () => {
-    const onSend = vi.fn();
-    render(<EmailComposer initialData={DRAFT_WITHOUT_SUBJECT} onSend={onSend} />);
+  it('falls back to a listed address when the active account has no identity', () => {
+    // Identities still loading, or an account that simply has none: the
+    // dropdown can only offer the other account's address, so that is what the
+    // composer must treat as the sender - otherwise it shows one address and
+    // saves/sends through the active account.
+    useIdentityStore.setState({ identities: [] as never });
+    identityGroups.current = ALL_GROUPS.filter((g) => g.localAccountId !== 'acct-1');
 
-    fireEvent.click(sendButton());
-    fireEvent.click(await screen.findByText('empty_subject.back'));
+    const { getByTestId } = renderComposer();
 
-    await waitFor(() => expect(screen.queryByText('empty_subject.title')).not.toBeInTheDocument());
-    expect(onSend).not.toHaveBeenCalled();
-  });
-
-  it('still sends normally when a subject is present', async () => {
-    const onSend = vi.fn();
-    render(<EmailComposer initialData={{ ...DRAFT_WITHOUT_SUBJECT, subject: 'Lunch' }} onSend={onSend} />);
-
-    fireEvent.click(sendButton());
-
-    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
-    expect(screen.queryByText('empty_subject.title')).not.toBeInTheDocument();
+    // A single remaining address renders as text rather than a dropdown.
+    expect(getByTestId('composer-from').textContent).toContain('other@example.com');
   });
 });

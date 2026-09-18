@@ -27,8 +27,8 @@ const proIdentities = vi.hoisted(() => ({
   allIdentities: [] as { id: string; email: string; name: string }[],
 }));
 
-vi.mock('@/hooks/use-pro-multi-account-identities', () => ({
-  useProMultiAccountIdentities: () => proIdentities,
+vi.mock('@/hooks/use-multi-account-identities', () => ({
+  useMultiAccountIdentities: () => proIdentities,
   stripCrossAccountIdentityPrefix: (id: string) => {
     const at = id.indexOf('::');
     return at === -1

@@ -100,7 +100,7 @@ import { EmailIdentityBadge } from "./email-identity-badge";
 import { UnsubscribeBanner } from "./unsubscribe-banner";
 import { CalendarInvitationBanner } from "./calendar-invitation-banner";
 import { ReadReceiptBanner } from "./read-receipt-banner";
-import { stripCrossAccountIdentityPrefix } from "@/hooks/use-pro-multi-account-identities";
+import { stripCrossAccountIdentityPrefix } from "@/hooks/use-multi-account-identities";
 import { useTour } from "@/components/tour/tour-provider";
 import { useMenuNavigation } from "@/hooks/use-menu-navigation";
 import { findCalendarAttachment, isCalendarMimeType } from "@/lib/calendar-invitation";

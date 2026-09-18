@@ -41,8 +41,8 @@ vi.mock('@/components/files/file-preview-modal', () => ({ FilePreviewModal: () =
 vi.mock('@/hooks/use-focus-trap', () => ({
   useFocusTrap: () => ({ current: null }),
 }));
-vi.mock('@/hooks/use-pro-multi-account-identities', () => ({
-  useProMultiAccountIdentities: () => ({ enabled: false, groups: [], allIdentities: [] }),
+vi.mock('@/hooks/use-multi-account-identities', () => ({
+  useMultiAccountIdentities: () => ({ enabled: false, groups: [], allIdentities: [] }),
   stripCrossAccountIdentityPrefix: (id: string) => ({ localAccountId: null, rawId: id }),
 }));
 
