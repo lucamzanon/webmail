@@ -665,7 +665,7 @@ export interface ResyncWebPushParams {
 /**
  * Bring an already-enabled push registration up to date without any user
  * action: refresh its expiry and install/repair the delivery filter. Nothing
- * here can prompt - it only runs when push is already on for the account -
+ * here can prompt - it requires a saved opt-in and granted permission -
  * and every failure is swallowed because the app must not care whether the
  * background touch-up worked. Returns true when a re-sync actually ran.
  */
@@ -678,7 +678,11 @@ export async function resyncWebPush(params: ResyncWebPushParams): Promise<boolea
   }
   if (!accountId || resyncedAccountIds.has(accountId)) return false;
   try {
-    if (!(await isWebPushEnabled(accountId))) return false;
+    // The browser may have lost its endpoint while our saved opt-in and
+    // server registration survived. Recreate it through the normal enable
+    // flow instead of permanently skipping the account in that state.
+    if (!isWebPushSupported() || Notification.permission !== 'granted'
+      || !localStorage.getItem(subscriptionIdKey(accountId))) return false;
     resyncedAccountIds.add(accountId);
     await enableWebPush({
       client: params.client,
@@ -687,6 +691,7 @@ export async function resyncWebPush(params: ResyncWebPushParams): Promise<boolea
     });
     return true;
   } catch {
+    resyncedAccountIds.delete(accountId);
     return false;
   }
 }
@@ -694,4 +699,55 @@ export async function resyncWebPush(params: ResyncWebPushParams): Promise<boolea
 // Test hook: forget which accounts were re-synced during this page load.
 export function resetWebPushResyncState(): void {
   resyncedAccountIds.clear();
+}
+
+export interface BulkWebPushTarget {
+  accountId: string;
+  client: IJMAPClient;
+  accountLabel?: string;
+}
+
+export interface BulkWebPushResult {
+  enabled: string[];
+  /** Accounts left untouched, with the reason the first failure gave. */
+  failed: Array<{ accountId: string; error: unknown }>;
+}
+
+/**
+ * Enable push for several accounts against one browser subscription.
+ *
+ * The browser only ever holds a single PushSubscription: `enableWebPush` reuses
+ * it and registers one server-side subscription per account, which is why every
+ * account has to be walked separately. Sequential on purpose - the first call
+ * is the one that may prompt for permission, and parallel prompts race.
+ *
+ * A browser-level refusal (unsupported, permission denied or dismissed) applies
+ * to every account, so it stops the walk instead of failing them one by one.
+ */
+export async function enableWebPushForAccounts(
+  targets: BulkWebPushTarget[],
+  options: { relayBaseUrl?: string; forceRecreate?: boolean } = {},
+): Promise<BulkWebPushResult> {
+  const result: BulkWebPushResult = { enabled: [], failed: [] };
+  let browserRefusal: unknown;
+  for (const target of targets) {
+    if (browserRefusal !== undefined) {
+      result.failed.push({ accountId: target.accountId, error: browserRefusal });
+      continue;
+    }
+    try {
+      await enableWebPush({
+        client: target.client,
+        relayBaseUrl: options.relayBaseUrl,
+        accountLabel: target.accountLabel,
+        forceRecreate: options.forceRecreate,
+      });
+      result.enabled.push(target.accountId);
+    } catch (error) {
+      if (error instanceof WebPushUnsupportedError || !isWebPushSupported()
+        || Notification.permission !== 'granted') browserRefusal = error;
+      result.failed.push({ accountId: target.accountId, error });
+    }
+  }
+  return result;
 }

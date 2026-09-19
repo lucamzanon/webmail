@@ -2,8 +2,10 @@ import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
 import { useAuthStore } from '../auth-store';
 import { useAccountStore } from '../account-store';
-import { decryptVault, encryptVault, type VaultContents } from '@/lib/account-vault';
+import { decryptVault, encryptVault, type VaultAccount, type VaultContents } from '@/lib/account-vault';
 import { collectVault } from '@/lib/account-vault-client';
+import { useSettingsStore } from '../settings-store';
+import { useThemeStore } from '../theme-store';
 
 const { rejected, connected, requests, sessionRestore } = vi.hoisted(() => ({
   rejected: new Set<string>(), connected: [] as string[], requests: [] as { url: string; method?: string; body?: string }[],
@@ -64,10 +66,15 @@ afterEach(async () => {
   vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 
+/** Identity and credentials only: appearance round-trips in its own test. */
+const withoutAppearance = (accounts: VaultAccount[]) =>
+  accounts.map(({ avatarImage: _image, display: _display, theme: _theme, ...rest }) => rest);
+
 describe('one-password account restore', () => {
   it('imports metadata from a password archive without logging in, writing cookies or keeping passwords', async () => {
     const result = await useAuthStore.getState().restoreVault(contents, true, false);
-    expect(result).toEqual({ connected: 0, failed: 0, pending: 6 });
+    expect(result).toMatchObject({ connected: 0, failed: 0, pending: 6 });
+    expect(result.connectedIds).toHaveLength(0);
     expect(connected).toHaveLength(0);
     expect(requests).toHaveLength(0);
     expect(useAuthStore.getState().getAllConnectedClients().size).toBe(0);
@@ -91,19 +98,64 @@ describe('one-password account restore', () => {
     requests.length = 0; connected.length = 0;
     const metadata = { ...contents, accounts: contents.accounts.map(({ password: _password, ...account }) => account) };
     const result = await useAuthStore.getState().restoreVault(metadata, true);
-    expect(result).toEqual({ connected: 1, failed: 0, pending: 5 });
+    expect(result).toMatchObject({ connected: 1, failed: 0, pending: 5 });
+    expect(result.connectedIds).toHaveLength(1);
     expect(requests).toHaveLength(0);
     expect(connected).toHaveLength(0);
     expect(useAuthStore.getState().client).toBe(existing);
     expect(useAuthStore.getState().activeAccountId).toBe(activeId);
     expect(useAccountStore.getState().accounts[0]).toEqual(original);
-    expect(collectVault(owner, false).accounts).toEqual(metadata.accounts);
+    expect(withoutAppearance(collectVault(owner, false).accounts)).toEqual(withoutAppearance(metadata.accounts));
+  });
+
+  it('carries avatars, display profiles and the shared-display choice to a fresh browser', async () => {
+    const avatar = 'data:image/webp;base64,' + btoa('pretend-webp');
+    await useAuthStore.getState().restoreVault(contents, true);
+    const ids = useAccountStore.getState().accounts.map(a => a.id);
+    useAccountStore.getState().updateAccount(ids[0], { avatarImage: avatar });
+    useSettingsStore.setState({
+      displayAccountId: ids[0], sharedDisplaySourceId: ids[0],
+      displayProfiles: { [ids[1]]: { density: 'compact' } as never },
+      accountThemes: { [ids[1]]: { theme: 'dark', activeThemeId: 'midnight' } },
+    });
+    useThemeStore.setState({ theme: 'dark', activeThemeId: null });
+    useSettingsStore.getState().updateSetting('emailsPerPage', 75);
+
+    const archived = collectVault(owner, true);
+    expect(archived.sharedDisplaySourceId).toBe(ids[0]);
+    expect(archived.accounts.find(a => a.username === owner.username)?.avatarImage).toBe(avatar);
+    // The account on screen owns the live settings, not a stale profile entry.
+    expect(archived.accounts.find(a => a.username === owner.username)?.display?.emailsPerPage).toBe(75);
+    expect(archived.accounts.find(a => a.username === 'box0@example.com')?.theme).toEqual({ theme: 'dark', activeThemeId: 'midnight' });
+
+    // A fresh browser: same archive, nothing kept locally.
+    localStorage.clear();
+    useAccountStore.setState({ accounts: [], activeAccountId: null, defaultAccountId: null });
+    useSettingsStore.setState({ displayProfiles: {}, accountThemes: {}, sharedDisplaySourceId: null, displayAccountId: null });
+    await useAuthStore.getState().logoutAll();
+    await useAuthStore.getState().restoreVault(await decryptVault(await encryptVault(archived, 'archive-password'), 'archive-password', owner), true);
+
+    const restored = useSettingsStore.getState();
+    expect(useAccountStore.getState().accounts.find(a => a.username === owner.username)?.avatarImage).toBe(avatar);
+    expect(restored.displayProfiles[ids[0]]?.emailsPerPage).toBe(75);
+    expect(restored.accountThemes[ids[1]]).toEqual({ theme: 'dark', activeThemeId: 'midnight' });
+    expect(restored.sharedDisplaySourceId).toBe(ids[0]);
+  });
+
+  it('keeps an archive usable when a display profile is corrupt', async () => {
+    const poisoned = { ...contents, accounts: contents.accounts.map((a, i) => i === 0
+      ? { ...a, display: { density: { nested: true } }, theme: { theme: 'neon' } } as never : a) };
+    const parsed = await decryptVault(await encryptVault(poisoned, 'archive-password'), 'archive-password', owner);
+    expect(parsed.accounts[0].display).toBeUndefined();
+    expect(parsed.accounts[0].theme).toBeUndefined();
+    expect(parsed.accounts).toHaveLength(contents.accounts.length);
   });
 
   it('restores all six accounts into a clean browser with distinct slots and no local plaintext secrets', async () => {
     const envelope = await encryptVault(contents, 'a single archive password');
     const result = await useAuthStore.getState().restoreVault(await decryptVault(envelope, 'a single archive password', owner), true);
-    expect(result).toEqual({ connected: 6, failed: 0, pending: 0 });
+    expect(result).toMatchObject({ connected: 6, failed: 0, pending: 0 });
+    expect(result.connectedIds).toHaveLength(6);
     expect(connected).toHaveLength(6);
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
     expect(useAuthStore.getState().activeAccountId).toBe(contents.defaultAccountId);
@@ -111,7 +163,7 @@ describe('one-password account restore', () => {
     const registry = useAccountStore.getState().accounts;
     expect(new Set(registry.map(a => a.cookieSlot)).size).toBe(6);
     expect(registry.every(a => a.isConnected && a.vaultManaged && a.rememberMe)).toBe(true);
-    expect(collectVault(owner).accounts).toEqual(contents.accounts);
+    expect(withoutAppearance(collectVault(owner).accounts)).toEqual(withoutAppearance(contents.accounts));
     const persisted = Object.keys(localStorage).map(k => localStorage.getItem(k)).join('');
     for (const account of contents.accounts) if (account.password) expect(persisted).not.toContain(account.password);
     expect(persisted).not.toContain('a single archive password');
@@ -124,7 +176,8 @@ describe('one-password account restore', () => {
   it('keeps a failed account visible while connecting the others, without writing remembered sessions when disabled', async () => {
     rejected.add('box0@example.com');
     const result = await useAuthStore.getState().restoreVault(contents, false);
-    expect(result).toEqual({ connected: 5, failed: 1, pending: 0 });
+    expect(result).toMatchObject({ connected: 5, failed: 1, pending: 0 });
+    expect(result.connectedIds).toHaveLength(5);
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
     const failed = useAccountStore.getState().accounts.find(a => a.username === 'box0@example.com');
     expect(failed).toMatchObject({ isConnected: false, hasError: true, vaultManaged: true });

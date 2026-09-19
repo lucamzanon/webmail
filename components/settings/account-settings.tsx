@@ -8,6 +8,8 @@ import { useEmailStore } from '@/stores/email-store';
 import { useAccountStore, type AccountEntry } from '@/stores/account-store';
 import { useManagedAccountStore } from '@/stores/managed-account-store';
 import type { SharedAccount } from '@/lib/jmap/types';
+import { AccountMigrationSettings } from './account-migration-settings';
+import { AccountDisplaySettings } from './account-display-settings';
 import { SettingsSection, SettingItem } from './settings-section';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -119,6 +121,8 @@ export function AccountSettings() {
 
   return (
     <div className="space-y-8">
+      <AccountDisplaySettings />
+      <AccountMigrationSettings />
       {!isDemoMode && <AccountVaultSettings />}
       <SettingsSection title={t('title')} description={t('description')}>
         {/* Display Name */}
@@ -349,6 +353,7 @@ function AccountRow({
           className="w-9 h-9 text-sm"
           disableFavicon
           fallbackColor={account.avatarColor}
+          contactPhotoUri={account.avatarImage}
         />
         {isActive && (
           <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary flex items-center justify-center">

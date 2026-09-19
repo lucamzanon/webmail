@@ -63,7 +63,7 @@ interface AuthState {
   loginWithOAuth: (serverUrl: string, code: string, codeVerifier: string, redirectUri: string, serverId?: string) => Promise<boolean>;
   loginWithServerSso: (code: string, state: string) => Promise<boolean>;
   loginDemo: () => Promise<boolean>;
-  restoreVault: (contents: VaultContents, rememberMe: boolean, includePasswords?: boolean) => Promise<{ connected: number; failed: number; pending: number }>;
+  restoreVault: (contents: VaultContents, rememberMe: boolean, includePasswords?: boolean) => Promise<{ connected: number; failed: number; pending: number; connectedIds: string[] }>;
   /**
    * Obtain a usable access token for the active account.
    *
@@ -1072,6 +1072,11 @@ export const useAuthStore = create<AuthState>()(
         let failed = 0;
         let pending = 0;
         let keptConnected = 0;
+        // Accounts whose live client survived the import. They never enter
+        // `connectedIds` - that one steers the closing switch, which must land
+        // on an account this restore actually brought up - but callers asking
+        // "which accounts can act now?" need them too.
+        const keptIds: string[] = [];
         try {
           for (const entry of contents.accounts) {
             const local = useAccountStore.getState().getAccountById(generateAccountId(entry.username, entry.serverUrl));
@@ -1081,13 +1086,24 @@ export const useAuthStore = create<AuthState>()(
               rememberMe: includePasswords && !!entry.password && rememberMe, vaultManaged: true, lastLoginAt: 0, isConnected: false,
               hasError: false, isDefault: false,
             });
-            registry.updateAccount(id, { vaultManaged: true, label: entry.label, avatarColor: entry.avatarColor });
+            registry.updateAccount(id, { vaultManaged: true, label: entry.label, avatarColor: entry.avatarColor,
+              ...(entry.avatarImage === undefined ? {} : { avatarImage: entry.avatarImage }) });
+            // Appearance lands before the closing switchAccount, which reads the
+            // profile map to dress the account it activates.
+            if (entry.display || entry.theme) {
+              const settings = useSettingsStore.getState();
+              useSettingsStore.setState({
+                ...(entry.display ? { displayProfiles: { ...settings.displayProfiles,
+                  [id]: { ...settings.displayProfiles[id], ...entry.display } as typeof settings.displayProfiles[string] } } : {}),
+                ...(entry.theme ? { accountThemes: { ...settings.accountThemes, [id]: entry.theme } } : {}),
+              });
+            }
             const slot = useAccountStore.getState().getAccountById(id)!.cookieSlot;
             const existing = clients.get(id);
             if (!includePasswords || !entry.password) {
               // Metadata-only imports never create/replace clients or cookies.
               // In particular, preserve the mailbox used to sign in and rescan.
-              if (existing) keptConnected++;
+              if (existing) { keptConnected++; keptIds.push(id); }
               else {
                 pending++;
                 registry.updateAccount(id, { isConnected: false, hasError: true, errorMessage: 'Sign in again' });
@@ -1119,6 +1135,9 @@ export const useAuthStore = create<AuthState>()(
               failed++;
             }
           }
+          if (contents.sharedDisplaySourceId !== undefined) {
+            useSettingsStore.setState({ sharedDisplaySourceId: contents.sharedDisplaySourceId });
+          }
           if (connectedIds.length && contents.defaultAccountId) registry.setDefaultAccount(contents.defaultAccountId);
           const target = connectedIds.includes(contents.defaultAccountId || '') ? contents.defaultAccountId! : connectedIds[0];
           if (target) {
@@ -1130,7 +1149,8 @@ export const useAuthStore = create<AuthState>()(
             await get().switchAccount(target);
             set(s => ({ connectedAccountsRevision: s.connectedAccountsRevision + 1 }));
           }
-          return { connected: connectedIds.length + keptConnected, failed, pending };
+          return { connected: connectedIds.length + keptConnected, failed, pending,
+            connectedIds: [...connectedIds, ...keptIds] };
         } finally { set({ isLoading: false }); }
       },
 
@@ -2461,3 +2481,14 @@ export const useAuthStore = create<AuthState>()(
 // Expose getClientForAccount to the calendar/contact stores via a small
 // shared registry - see [[stores/client-registry]] for rationale.
 setClientLookup((accountId) => useAuthStore.getState().getClientForAccount(accountId));
+
+// Apply local presentation immediately on every login/switch path, including
+// when server settings sync is disabled. Auth owns the actual active session.
+useAuthStore.subscribe((state, previous) => {
+  if (state.activeAccountId !== previous.activeAccountId) {
+    useSettingsStore.getState().activateDisplayAccount(state.activeAccountId);
+  }
+});
+if (typeof window !== 'undefined') {
+  useSettingsStore.getState().activateDisplayAccount(useAuthStore.getState().activeAccountId);
+}

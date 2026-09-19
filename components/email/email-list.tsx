@@ -3,6 +3,11 @@
 import { Email, ThreadGroup } from "@/lib/jmap/types";
 import { ThreadListItem } from "./thread-list-item";
 import type { Attachment } from "@/lib/jmap/types";
+import { AccountTransferButton } from './account-transfer-button';
+import { AccountTransferDialog, resolveTransferSelection } from './account-transfer-dialog';
+import type { TransferMessage } from '@/lib/email-transfer';
+import { useAccountStore } from '@/stores/account-store';
+import { emailKeyFor } from '@/lib/thread-utils';
 import { EmailContextMenu } from "./email-context-menu";
 import { cn } from "@/lib/utils";
 import { Trash2, Mail, MailX, MailOpen, Loader2, SearchX, AlertTriangle, CalendarClock, ShieldCheck } from "lucide-react";
@@ -88,7 +93,7 @@ export function EmailList({
   const tSpam = useTranslations('email_viewer.spam');
   const { client } = useAuthStore();
   const {
-    selectedEmailIds,
+    selectedEmailKeys,
     selectAllEmails: _selectAllEmails,
     clearSelection,
     batchMarkAsRead,
@@ -227,7 +232,20 @@ export function EmailList({
     </div>
   );
 
-  const hasSelection = selectedEmailIds.size > 0;
+  const tTransfer = useTranslations('account_transfer');
+  const accountCount = useAccountStore(s => s.accounts.length);
+  const [transferSelection, setTransferSelection] = useState<TransferMessage[] | null>(null);
+  const selectedTransferEmails = useMemo(() => {
+    const candidates = [...emails, ...Array.from(threadEmailsCache.values()).flat()];
+    const selected = new Map<string, Email>();
+    for (const email of candidates) {
+      const key = emailKeyFor(email);
+      if (!selectedEmailKeys.has(key)) continue;
+      selected.set(key, email);
+    }
+    return [...selected.values()];
+  }, [emails, threadEmailsCache, selectedEmailKeys]);
+  const hasSelection = selectedEmailKeys.size > 0;
 
   const handleBatchMarkAsRead = async (read: boolean) => {
     if (!client || isProcessing) return;
@@ -243,7 +261,7 @@ export function EmailList({
     if (!client || isProcessing) return;
     setIsProcessing(true);
     try {
-      const emailIds = Array.from(selectedEmailIds);
+      const emailIds = Array.from(selectedEmailKeys);
       await batchUndoSpam(client, emailIds);
       const { toast } = await import('sonner');
       toast.success(tSpam('toast_not_spam_batch', { count: emailIds.length }));
@@ -266,8 +284,8 @@ export function EmailList({
         ? t('permanent_delete_confirm_title')
         : t('batch_actions.delete_confirm_title'),
       message: isInTrash
-        ? t('permanent_delete_confirm_batch_message', { count: selectedEmailIds.size })
-        : t('batch_actions.delete_confirm_message', { count: selectedEmailIds.size }),
+        ? t('permanent_delete_confirm_batch_message', { count: selectedEmailKeys.size })
+        : t('batch_actions.delete_confirm_message', { count: selectedEmailKeys.size }),
       confirmText: isInTrash
         ? t('permanent_delete')
         : t('batch_actions.delete'),
@@ -380,6 +398,7 @@ export function EmailList({
   return (
     <TagDisplayContext.Provider value={tagDisplay}>
     <div className={cn("flex flex-col min-h-0", className)}>
+      {transferSelection && <AccountTransferDialog selection={transferSelection} onClose={() => setTransferSelection(null)} />}
       {/* Batch Actions Toolbar */}
       <div
         ref={batchToolbarRef}
@@ -391,10 +410,11 @@ export function EmailList({
         <div className="px-4 py-2 border-b bg-accent/30 border-border flex items-center justify-between">
           <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-3 duration-300">
             <span className="text-sm font-medium text-foreground">
-              {t('batch_actions.selected_messages', { count: selectedEmailIds.size })}
+              {t('batch_actions.selected_messages', { count: selectedEmailKeys.size })}
             </span>
           </div>
           <div className="flex items-center gap-1 animate-in fade-in slide-in-from-right-3 duration-300">
+            <AccountTransferButton emails={selectedTransferEmails} expectedCount={selectedEmailKeys.size} />
             <Button
               variant="ghost"
               size="sm"
@@ -629,8 +649,8 @@ export function EmailList({
           mailboxes={mailboxes}
           selectedMailbox={selectedMailbox}
           currentMailboxRole={effectiveMailboxRole}
-          isMultiSelect={selectedEmailIds.has(contextMenuEmail.id)}
-          selectedCount={selectedEmailIds.size}
+          isMultiSelect={selectedEmailKeys.has(contextMenuEmail.id)}
+          selectedCount={selectedEmailKeys.size}
           onReply={() => onReply?.(contextMenuEmail!)}
           onReplyAll={() => onReplyAll?.(contextMenuEmail!)}
           onForward={() => onForward?.(contextMenuEmail!)}
@@ -641,6 +661,15 @@ export function EmailList({
           onDelete={() => onDelete?.(contextMenuEmail!)}
           onArchive={() => onArchive?.(contextMenuEmail!)}
           onSetTag={(color) => onSetTag?.(contextMenuEmail!.id, color)}
+          onTransfer={accountCount > 1 ? async () => {
+            const chosen = selectedEmailKeys.has(contextMenuEmail!.id) && selectedEmailKeys.size > 1
+              ? selectedTransferEmails : [contextMenuEmail!];
+            if (chosen === selectedTransferEmails && new Set(chosen.map(email => email.id)).size !== selectedEmailKeys.size) {
+              const { toast } = await import('sonner'); toast.error(tTransfer('selection_changed')); return;
+            }
+            try { setTransferSelection(resolveTransferSelection(chosen)); }
+            catch { const { toast } = await import('sonner'); toast.error(tTransfer('disconnected')); }
+          } : undefined}
           onMoveToMailbox={(mailboxId) => onMoveToMailbox?.(contextMenuEmail!.id, mailboxId)}
           onMarkAsSpam={() => onMarkAsSpam?.(contextMenuEmail!)}
           onUndoSpam={() => onUndoSpam?.(contextMenuEmail!)}
@@ -660,7 +689,7 @@ export function EmailList({
           onBatchMoveToMailbox={(mailboxId) => client && batchMoveToMailbox(client, mailboxId)}
           onBatchMarkAsSpam={async () => {
             if (client) {
-              const emailIds = Array.from(selectedEmailIds);
+              const emailIds = Array.from(selectedEmailKeys);
               try {
                 await batchMarkAsSpam(client, emailIds);
                 const { toast } = await import('sonner');
@@ -675,7 +704,7 @@ export function EmailList({
           }}
           onBatchUndoSpam={async () => {
             if (client) {
-              const emailIds = Array.from(selectedEmailIds);
+              const emailIds = Array.from(selectedEmailKeys);
               try {
                 await batchUndoSpam(client, emailIds);
                 const { toast } = await import('sonner');
