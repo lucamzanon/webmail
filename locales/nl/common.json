@@ -1016,6 +1016,12 @@
         "regular": "Normaal",
         "comfortable": "Comfortabel"
       },
+      "ui_skin": {
+        "label": "Interface-indeling",
+        "description": "Waar zoeken, navigatie en werkbalken staan",
+        "bulwark": "Standaard",
+        "gmail": "Gmail-stijl"
+      },
       "animations": {
         "label": "Animaties inschakelen",
         "description": "Vloeiende overgangen en effecten tonen"
@@ -2301,7 +2307,8 @@
       "next_email": "Volgende e-mail",
       "previous_email": "Vorige e-mail",
       "open_email": "E-mail openen",
-      "close_email": "Sluiten / Deselecteren"
+      "close_email": "Sluiten / Deselecteren",
+      "go_to_folder": "Ga naar map"
     },
     "actions": {
       "reply": "Beantwoorden",
@@ -2323,7 +2330,8 @@
       "global_search": "Alles doorzoeken"
     },
     "threads": {
-      "expand_collapse": "Gesprek uitklappen/inklappen"
+      "expand_collapse": "Gesprek uitklappen/inklappen",
+      "select_gmail_skin": "Gesprek selecteren (Gmail-skin)"
     },
     "composer": {
       "send": "E-mail verzenden",

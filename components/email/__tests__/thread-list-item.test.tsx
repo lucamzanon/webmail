@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ThreadListItem } from '../thread-list-item';
 import { useSettingsStore, DEFAULT_KEYWORDS } from '@/stores/settings-store';
 import { useEmailStore } from '@/stores/email-store';
-import { groupEmailsByThread } from '@/lib/thread-utils';
+import { emailKeyFor, groupEmailsByThread } from '@/lib/thread-utils';
 import type { Email } from '@/lib/jmap/types';
 
 vi.mock('@/hooks/use-email-drag', () => ({
@@ -63,6 +63,7 @@ describe('ThreadListItem tag badge', () => {
       emailKeywords: [...DEFAULT_KEYWORDS],
       showPreview: false,
       mailLayout: 'split',
+      uiSkin: 'bulwark',
     });
     useEmailStore.setState({
       selectedEmailKeys: new Set<string>(),
@@ -136,6 +137,7 @@ describe('ThreadListItem multi-message thread', () => {
       emailKeywords: [...DEFAULT_KEYWORDS],
       showPreview: false,
       mailLayout: 'split',
+      uiSkin: 'bulwark',
     });
     useEmailStore.setState({
       selectedEmailKeys: new Set<string>(),
@@ -197,6 +199,7 @@ describe('ThreadListItem row content', () => {
       emailKeywords: [...DEFAULT_KEYWORDS],
       showPreview: false,
       mailLayout: 'split',
+      uiSkin: 'bulwark',
     });
     useEmailStore.setState({
       selectedEmailKeys: new Set<string>(),
@@ -220,6 +223,23 @@ describe('ThreadListItem row content', () => {
     // rather than getting a paragraph of its own.
     expect(container.querySelector('p')).toBeNull();
   });
+
+  it('scopes the Gmail checkbox to the message account', () => {
+    const first = makeEmail({
+      sourceClientAccountId: 'login-a',
+      sourceAccountId: 'account-a',
+    });
+    const namesake = makeEmail({
+      sourceClientAccountId: 'login-b',
+      sourceAccountId: 'account-b',
+    });
+    useSettingsStore.setState({ uiSkin: 'gmail', mailLayout: 'focus' });
+    useEmailStore.setState({ selectedEmailKeys: new Set([emailKeyFor(namesake)]) });
+
+    renderRow(first);
+
+    expect(screen.getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
+  });
 });
 
 describe('ThreadListItem shift-range avatar selection', () => {
@@ -228,6 +248,7 @@ describe('ThreadListItem shift-range avatar selection', () => {
       emailKeywords: [...DEFAULT_KEYWORDS],
       showPreview: false,
       mailLayout: 'split',
+      uiSkin: 'bulwark',
     });
   });
 
@@ -265,6 +286,7 @@ describe('ThreadListItem row tint', () => {
       emailKeywords: [...DEFAULT_KEYWORDS],
       showPreview: false,
       mailLayout: 'split',
+      uiSkin: 'bulwark',
       tintListRowsByTag: true,
     });
     useEmailStore.setState({
@@ -308,6 +330,7 @@ describe('ThreadListItem account row tint', () => {
       emailKeywords: [...DEFAULT_KEYWORDS],
       showPreview: false,
       mailLayout: 'split',
+      uiSkin: 'bulwark',
       tintListRowsByTag: true,
       tintListRowsByAccount: false,
     });

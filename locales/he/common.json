@@ -981,6 +981,12 @@
         "regular": "רגיל",
         "comfortable": "נוח"
       },
+      "ui_skin": {
+        "label": "פריסת הממשק",
+        "description": "היכן ממוקמים החיפוש, הניווט וסרגלי הכלים",
+        "bulwark": "ברירת מחדל",
+        "gmail": "סגנון Gmail"
+      },
       "animations": {
         "label": "הפעל אנימציות",
         "description": "הצג מעברים ואפקטים חלקים"
@@ -2225,7 +2231,8 @@
       "next_email": "המייל הבא",
       "previous_email": "אימייל קודם",
       "open_email": "פתח אימייל",
-      "close_email": "סגור / בטל בחירה"
+      "close_email": "סגור / בטל בחירה",
+      "go_to_folder": "מעבר לתיקייה"
     },
     "actions": {
       "reply": "השב",
@@ -2247,7 +2254,8 @@
       "global_search": "חיפוש בכל מקום"
     },
     "threads": {
-      "expand_collapse": "הרחב/כווץ את השרשור"
+      "expand_collapse": "הרחב/כווץ את השרשור",
+      "select_gmail_skin": "בחירת השיחה (עיצוב Gmail)"
     },
     "composer": {
       "template_picker": "פתח את בוחר התבניות",

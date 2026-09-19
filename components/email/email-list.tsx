@@ -56,6 +56,11 @@ interface EmailListProps {
   onLoadMoreScheduled?: () => void;
   onCancelScheduledForEdit?: (email: Email) => void | Promise<void>;
   onRescheduleScheduled?: (email: Email) => void | Promise<void>;
+  /**
+   * The Gmail skin folds the batch verbs into the single toolbar above the
+   * list, so the separate bar that would otherwise slide in here is redundant.
+   */
+  hideBatchToolbar?: boolean;
 }
 
 export function EmailList({
@@ -84,6 +89,7 @@ export function EmailList({
   onMoveToMailbox,
   onEditDraft,
   isScheduledView = false,
+  hideBatchToolbar = false,
   onLoadMoreScheduled,
   onCancelScheduledForEdit,
   onRescheduleScheduled,
@@ -261,7 +267,7 @@ export function EmailList({
     if (!client || isProcessing) return;
     setIsProcessing(true);
     try {
-      const emailIds = Array.from(selectedEmailKeys);
+      const emailIds = selectedTransferEmails.map((email) => email.id);
       await batchUndoSpam(client, emailIds);
       const { toast } = await import('sonner');
       toast.success(tSpam('toast_not_spam_batch', { count: emailIds.length }));
@@ -404,7 +410,7 @@ export function EmailList({
         ref={batchToolbarRef}
         className={cn(
           "transition-all duration-300 ease-in-out overflow-hidden",
-          hasSelection && !isScheduledView ? "max-h-16 opacity-100" : "max-h-0 opacity-0"
+          hasSelection && !isScheduledView && !hideBatchToolbar ? "max-h-16 opacity-100" : "max-h-0 opacity-0"
         )}
       >
         <div className="px-4 py-2 border-b bg-accent/30 border-border flex items-center justify-between">
@@ -649,7 +655,7 @@ export function EmailList({
           mailboxes={mailboxes}
           selectedMailbox={selectedMailbox}
           currentMailboxRole={effectiveMailboxRole}
-          isMultiSelect={selectedEmailKeys.has(contextMenuEmail.id)}
+          isMultiSelect={selectedEmailKeys.has(emailKeyFor(contextMenuEmail))}
           selectedCount={selectedEmailKeys.size}
           onReply={() => onReply?.(contextMenuEmail!)}
           onReplyAll={() => onReplyAll?.(contextMenuEmail!)}
@@ -662,7 +668,7 @@ export function EmailList({
           onArchive={() => onArchive?.(contextMenuEmail!)}
           onSetTag={(color) => onSetTag?.(contextMenuEmail!.id, color)}
           onTransfer={accountCount > 1 ? async () => {
-            const chosen = selectedEmailKeys.has(contextMenuEmail!.id) && selectedEmailKeys.size > 1
+            const chosen = selectedEmailKeys.has(emailKeyFor(contextMenuEmail!)) && selectedEmailKeys.size > 1
               ? selectedTransferEmails : [contextMenuEmail!];
             if (chosen === selectedTransferEmails && new Set(chosen.map(email => email.id)).size !== selectedEmailKeys.size) {
               const { toast } = await import('sonner'); toast.error(tTransfer('selection_changed')); return;
@@ -689,7 +695,7 @@ export function EmailList({
           onBatchMoveToMailbox={(mailboxId) => client && batchMoveToMailbox(client, mailboxId)}
           onBatchMarkAsSpam={async () => {
             if (client) {
-              const emailIds = Array.from(selectedEmailKeys);
+              const emailIds = selectedTransferEmails.map((email) => email.id);
               try {
                 await batchMarkAsSpam(client, emailIds);
                 const { toast } = await import('sonner');
@@ -704,7 +710,7 @@ export function EmailList({
           }}
           onBatchUndoSpam={async () => {
             if (client) {
-              const emailIds = Array.from(selectedEmailKeys);
+              const emailIds = selectedTransferEmails.map((email) => email.id);
               try {
                 await batchUndoSpam(client, emailIds);
                 const { toast } = await import('sonner');

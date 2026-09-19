@@ -44,7 +44,7 @@ import { useUIStore } from "@/stores/ui-store";
 import { useDeviceDetection } from "@/hooks/use-media-query";
 import { usePaneSize } from "@/hooks/use-pane-size";
 import { usePaneId } from "@/hooks/use-pane-context";
-import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { useKeyboardShortcuts, type GoToMailboxTarget } from "@/hooks/use-keyboard-shortcuts";
 import { useRefreshGesture } from "@/hooks/use-refresh-gesture";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { usePromptDialog } from "@/hooks/use-prompt-dialog";
@@ -53,7 +53,7 @@ import { debug } from "@/lib/debug";
 import { playNotificationSound } from "@/lib/notification-sound";
 import { cn } from "@/lib/utils";
 import { localizeMailboxName } from "@/lib/mailbox-label";
-import { KEYWORD_PREFIX, KEYWORD_PREFIX_LEGACY, groupEmailsByThread, threadKeyFor } from "@/lib/thread-utils";
+import { emailKeyFor, KEYWORD_PREFIX, KEYWORD_PREFIX_LEGACY, groupEmailsByThread, threadKeyFor } from "@/lib/thread-utils";
 import { resolveThreadRoute } from "@/lib/thread-routing";
 import {
   ErrorBoundary,
@@ -66,13 +66,15 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { PromptDialog } from "@/components/ui/prompt-dialog";
 import { TotpReauthDialog } from "@/components/totp-reauth-dialog";
 import { DragDropProvider } from "@/contexts/drag-drop-context";
-import { isFilterEmpty, activeFilterCount } from "@/lib/jmap/search-utils";
+import { isFilterEmpty, activeFilterCount, DEFAULT_SEARCH_FILTERS } from "@/lib/jmap/search-utils";
 import { SearchBox, type ContactSearchField } from "@/components/search/search-box";
 import type { ContactSuggestion } from "@/lib/search-suggestions";
 import type { Attachment } from "@/lib/jmap/types";
 import { useSearchHistoryStore } from "@/stores/search-history-store";
 import { WelcomeBanner } from "@/components/ui/welcome-banner";
 import { NavigationRail } from "@/components/layout/navigation-rail";
+import { GmailTopBar } from "@/components/layout/gmail-top-bar";
+import { GmailListToolbar } from "@/components/email/gmail-list-toolbar";
 import { SidebarAppsModal } from "@/components/layout/sidebar-apps-modal";
 import { InlineAppView } from "@/components/layout/inline-app-view";
 import { useSidebarApps } from "@/hooks/use-sidebar-apps";
@@ -135,6 +137,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
   const tQuote = useTranslations('quote_header');
   const { appName } = useConfig();
   const mailLayout = useSettingsStore((state) => state.mailLayout);
+  const uiSkin = useSettingsStore((state) => state.uiSkin);
   // Phones present search full-screen from the header field rather than
   // giving it a permanent second bar under the header.
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
@@ -314,6 +317,19 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
   // Mobile/tablet responsive hooks
   const { isMobile, isTablet } = useDeviceDetection();
   const isEmbedded = useIsEmbedded();
+  /**
+   * Gmail's list cursor. `j` / `k` there move a highlight without opening the
+   * conversation, marking it read or changing the URL - only Enter / `o` / a
+   * click do that. Bulwark otherwise treats "selected" and "open" as the same
+   * thing, so the skin keeps the selection (every action already targets it)
+   * and records that it is only a cursor.
+   */
+  const [cursorOnly, setCursorOnly] = useState(false);
+  // The Gmail skin only changes the desktop shell: it lifts search into a
+  // global header and drops the left app rail (its apps live in the header's
+  // grid instead). Mobile, tablet and the embedded Pro pane keep their own
+  // chrome, which the skin has no room for.
+  const gmailShell = uiSkin === 'gmail' && !isMobile && !isTablet && !isEmbedded;
   // Pane hosting (Pro shell). When this app renders inside a Pro pane, the
   // pane publishes its width and id; `isMobile` above is then pane-based,
   // and layout that would use viewport-fixed positioning must scope itself
@@ -646,7 +662,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
 
   useBrowserNavigation({
     mailboxId: selectedMailbox,
-    emailId: selectedEmail?.id ?? null,
+    emailId: gmailShell && cursorOnly ? null : (selectedEmail?.id ?? null),
     threadId: conversationThread?.threadId ?? null,
     composerOpen: showComposer,
     sidebarOpen,
@@ -662,7 +678,8 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       const currentIndex = selectedEmail ? activeEmails.findIndex(e => e.id === selectedEmail.id) : -1;
       const nextIndex = currentIndex < activeEmails.length - 1 ? currentIndex + 1 : currentIndex;
       if (nextIndex >= 0 && nextIndex < activeEmails.length) {
-        handleEmailSelect(activeEmails[nextIndex]);
+        void handleEmailSelect(activeEmails[nextIndex]);
+        if (gmailShell) setCursorOnly(true);
       }
     },
     onPreviousEmail: () => {
@@ -670,13 +687,17 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       const currentIndex = selectedEmail ? activeEmails.findIndex(e => e.id === selectedEmail.id) : activeEmails.length;
       const prevIndex = currentIndex > 0 ? currentIndex - 1 : 0;
       if (prevIndex >= 0 && prevIndex < activeEmails.length) {
-        handleEmailSelect(activeEmails[prevIndex]);
+        void handleEmailSelect(activeEmails[prevIndex]);
+        if (gmailShell) setCursorOnly(true);
       }
     },
     onOpenEmail: () => {
-      // Email is already opened when selected
+      // Outside the Gmail skin the email is already open by virtue of being
+      // selected; under it this is the step that promotes cursor to open.
+      setCursorOnly(false);
     },
     onCloseEmail: () => {
+      setCursorOnly(false);
       selectEmail(null);
       if (isMobile) {
         setActiveView("list");
@@ -774,7 +795,9 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       if (['sent', 'drafts', 'scheduled'].includes(currentMailbox?.role || '')) return;
       const isInJunk = currentMailbox?.role === 'junk';
       if (selectedEmailKeys.size > 0 && client) {
-        const ids = Array.from(selectedEmailKeys);
+        const ids = activeEmails
+          .filter((email) => selectedEmailKeys.has(emailKeyFor(email)))
+          .map((email) => email.id);
         try {
           if (isInJunk) {
             await batchUndoSpam(client, ids);
@@ -825,6 +848,37 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
     onDeselectAll: () => {
       clearSelection();
     },
+    // Gmail's `x`: put the focused conversation in or out of the selection.
+    // Only reachable under the Gmail skin, which hands `x` over from thread
+    // expansion (a thing Gmail's web client doesn't do).
+    onToggleSelection: () => {
+      if (isScheduledView || !selectedEmail) return;
+      toggleEmailSelection(selectedEmail);
+    },
+    // Gmail's `g` sequences. Starred is a filter here rather than a folder,
+    // which is what the advanced-search star toggle already drives; All mail
+    // uses the folder the account nominated in Layout settings, falling back
+    // to its Archive.
+    onGoToMailbox: (target: GoToMailboxTarget) => {
+      if (isScheduledView && target !== 'inbox') return;
+      if (target === 'starred') {
+        setSearchFilters({ ...DEFAULT_SEARCH_FILTERS, isStarred: true });
+        void handleAdvancedSearch();
+        return;
+      }
+      const roleFor = { inbox: 'inbox', sent: 'sent', drafts: 'drafts' } as const;
+      if (target === 'all') {
+        const configured = viewingAccountId
+          ? useSettingsStore.getState().allMailFolderIds[viewingAccountId]
+          : undefined;
+        const allMailId = (typeof configured === 'string' ? configured : undefined)
+          ?? mailboxes.find((mb) => mb.role === 'archive')?.id;
+        if (allMailId) void handleMailboxSelect(allMailId);
+        return;
+      }
+      const mailbox = mailboxes.find((mb) => mb.role === roleFor[target]);
+      if (mailbox) void handleMailboxSelect(mailbox.id);
+    },
     // `x` in the help modal: expand/collapse the selected email's thread. Same
     // steps as EmailList.handleToggleThreadExpansion - expanding pulls the
     // thread's messages and marks them read, collapsing only toggles. (#683)
@@ -842,7 +896,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       }
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [activeEmails, selectedEmail, client, selectedMailbox, isMobile, isTablet, selectedEmailKeys, mailboxes, isScheduledView]);
+  }), [activeEmails, selectedEmail, client, selectedMailbox, isMobile, isTablet, selectedEmailKeys, mailboxes, isScheduledView, gmailShell]);
 
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({
@@ -850,6 +904,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
     emails: activeEmails,
     selectedEmailId: selectedEmail?.id,
     selectionCount: selectedEmailKeys.size,
+    gmailKeys: gmailShell,
     handlers: keyboardHandlers,
   });
 
@@ -1567,6 +1622,12 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       return;
     }
 
+    // A Gmail cursor is not a read receipt: the mail is only marked once it is
+    // actually opened.
+    if (gmailShell && cursorOnly) {
+      return;
+    }
+
     // Get current setting value
     const markAsReadDelay = useSettingsStore.getState().markAsReadDelay;
     debug.log('email', '[Mark as Read] Delay setting:', markAsReadDelay, 'ms for email:', selectedEmail.id);
@@ -1597,7 +1658,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedEmail?.id, isScheduledView]);
+  }, [selectedEmail?.id, isScheduledView, gmailShell, cursorOnly]);
 
   // Handle new email notifications - play sound
   useEffect(() => {
@@ -3251,7 +3312,8 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       })();
   const isFocusedMailLayout = mailLayout === 'focus';
   const isHorizontalMailLayout = mailLayout === 'horizontal' && !isMobile && !isTablet;
-  const hasViewerContent = showComposer || Boolean(conversationThread) || Boolean(selectedEmail);
+  const hasViewerContent = showComposer || Boolean(conversationThread)
+    || Boolean(selectedEmail && !(gmailShell && cursorOnly));
   const shouldCollapseListPane = (isTablet && !tabletListVisible) || (!isMobile && isFocusedMailLayout && hasViewerContent);
   const shouldHideViewerPane = !isMobile && !hasViewerContent && isFocusedMailLayout;
   const shouldHideHorizontalViewerPane = isHorizontalMailLayout && !hasViewerContent;
@@ -3261,6 +3323,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
     email: { id: string } & Partial<Pick<Email, 'sourceClientAccountId' | 'sourceAccountId'>>,
   ) => {
     if (!client || !email) return;
+    setCursorOnly(false);
 
     // If composing, suspend the composer (unmount will trigger onSaveState)
     if (showComposer) {
@@ -3498,9 +3561,28 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
             <span>{tCommon('reconnecting')}</span>
           </div>
         )}
+        {gmailShell && !fullscreenReading && (
+          <GmailTopBar
+            searchQuery={searchQuery}
+            onSearchQueryChange={setSearchQuery}
+            onSearchSubmit={handleSearch}
+            onSearchClear={handleClearSearch}
+            onSelectContact={handleSelectContactSuggestion}
+            onToggleFilters={toggleAdvancedSearch}
+            filtersOpen={isAdvancedSearchOpen}
+            activeFilterCount={activeFilterCount(searchFilters)}
+            searchDisabled={isScheduledView}
+            onShowShortcuts={() => setShowShortcutsModal(true)}
+            onManageApps={handleManageApps}
+            onInlineApp={handleInlineApp}
+            onCloseInlineApp={closeInlineApp}
+            activeAppId={inlineApp?.id ?? null}
+          />
+        )}
         <div className="flex flex-1 overflow-hidden">
-        {/* Desktop Navigation Rail (hidden when embedded inside Pro shell) */}
-        {!isMobile && !isTablet && !isEmbedded && (
+        {/* Desktop Navigation Rail (hidden when embedded inside Pro shell, and
+            under the Gmail skin, whose header carries the app grid instead) */}
+        {!isMobile && !isTablet && !isEmbedded && !gmailShell && (
           <div className="w-14 bg-secondary flex flex-col flex-shrink-0" style={{ borderRight: '1px solid rgba(128, 128, 128, 0.3)' }}>
             <NavigationRail
               collapsed
@@ -3574,7 +3656,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
             inlineApp && "hidden",
             fullscreenReading && "hidden"
           )}
-          style={!isMobile && !isTablet ? { width: sidebarCollapsed ? 48 : sidebarWidth } : undefined}
+          style={!isMobile && !isTablet ? { width: sidebarCollapsed ? (gmailShell ? 72 : 48) : sidebarWidth } : undefined}
         >
           <ErrorBoundary fallback={SidebarErrorFallback}>
             <Sidebar
@@ -3614,6 +3696,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                 }
               }}
               onSidebarClose={() => setSidebarOpen(false)}
+              gmailShell={gmailShell}
               multiAccountMode={isEmbedded}
               accountMailboxes={accountMailboxes}
               viewingAccountId={viewingAccountId}
@@ -3701,6 +3784,16 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                   <span className="font-medium truncate">{t('sidebar.search_placeholder_hint')}</span>
                 </div>
               )}
+              {gmailShell ? (
+                <GmailListToolbar
+                  loadedCount={activeEmails.length}
+                  totalCount={mailboxes.find((mb) => mb.id === selectedMailbox)?.totalEmails}
+                  onRefresh={handleManualRefresh}
+                  isRefreshing={isManualRefreshing}
+                  onMarkFolderRead={selectedMailbox ? () => handleMarkFolderRead(selectedMailbox) : undefined}
+                  disabled={isScheduledView}
+                />
+              ) : (
               <div className="px-3 h-14 flex items-center">
                 <div className="flex items-center gap-1.5 w-full">
                   {/* Select / Select All toggle */}
@@ -3738,7 +3831,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                       <Square className="w-4 h-4" />
                     )}
                   </button>
-                  <SearchBox
+                  {!gmailShell && <SearchBox
                     value={searchQuery}
                     onChange={setSearchQuery}
                     autoFocus={isMobile && mobileSearchOpen}
@@ -3750,8 +3843,8 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                     }}
                     disabled={isScheduledView}
                     title={isScheduledView ? t('email_viewer.scheduled_actions_only') : undefined}
-                  />
-                  <button
+                  />}
+                  {!gmailShell && <button
                     type="button"
                     onClick={toggleAdvancedSearch}
                     disabled={isScheduledView}
@@ -3770,7 +3863,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                         {activeFilterCount(searchFilters)}
                       </span>
                     )}
-                  </button>
+                  </button>}
                   <button
                     type="button"
                     onClick={handleManualRefresh}
@@ -3787,6 +3880,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                   </button>
                 </div>
               </div>
+              )}
 
               {/* Filter Area */}
               {isAdvancedSearchOpen && (
@@ -3980,6 +4074,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
 
             <ErrorBoundary fallback={EmailListErrorFallback}>
               <EmailList
+                hideBatchToolbar={gmailShell}
                 emails={activeEmails}
                 selectedEmailId={selectedEmail?.id}
                 isLoading={activeIsLoading}
@@ -4084,8 +4179,9 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
             </ErrorBoundary>
             </div>
 
-            {/* Floating Compose Button */}
-            <Button
+            {/* Floating Compose Button - the Gmail skin puts Compose at the
+                top of the rail instead, where that client keeps it. */}
+            {!gmailShell && <Button
               onClick={() => {
                 startFreshComposerSession();
                 setComposerMode('compose');
@@ -4101,7 +4197,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
               data-tour="compose-button"
             >
               <PenSquare className={isMobile ? "h-6 w-6" : "h-5 w-5"} />
-            </Button>
+            </Button>}
           </div>
 
           {/* Email list resize handle (desktop only) */}

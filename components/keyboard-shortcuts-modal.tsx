@@ -6,6 +6,7 @@ import { KEYBOARD_SHORTCUTS } from "@/hooks/use-keyboard-shortcuts";
 import { cn } from "@/lib/utils";
 import { useFocusTrap } from "@/hooks/use-focus-trap";
 import { useTour } from "@/components/tour/tour-provider";
+import { useSettingsStore } from "@/stores/settings-store";
 
 interface KeyboardShortcutsModalProps {
   isOpen: boolean;
@@ -15,6 +16,17 @@ interface KeyboardShortcutsModalProps {
 export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsModalProps) {
   const t = useTranslations();
   const { startTour } = useTour();
+  const gmailKeys = useSettingsStore((state) => state.uiSkin === "gmail");
+  const navigationShortcuts = gmailKeys
+    ? KEYBOARD_SHORTCUTS.navigation
+    : KEYBOARD_SHORTCUTS.navigation.filter(
+        (shortcut) => shortcut.description !== "shortcuts.navigation.go_to_folder"
+      );
+  const threadShortcuts = KEYBOARD_SHORTCUTS.threads.filter((shortcut) =>
+    shortcut.description === (gmailKeys
+      ? "shortcuts.threads.select_gmail_skin"
+      : "shortcuts.threads.expand_collapse")
+  );
 
   const modalRef = useFocusTrap({
     isActive: isOpen,
@@ -66,7 +78,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
                 {t("shortcuts.sections.navigation")}
               </h3>
               <div className="space-y-2">
-                {KEYBOARD_SHORTCUTS.navigation.map((shortcut) => (
+                {navigationShortcuts.map((shortcut) => (
                   <ShortcutRow
                     key={shortcut.key}
                     shortcutKey={shortcut.key}
@@ -114,7 +126,7 @@ export function KeyboardShortcutsModal({ isOpen, onClose }: KeyboardShortcutsMod
                 {t("shortcuts.sections.threads")}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {KEYBOARD_SHORTCUTS.threads.map((shortcut) => (
+                {threadShortcuts.map((shortcut) => (
                   <ShortcutRow
                     key={shortcut.key}
                     shortcutKey={shortcut.key}

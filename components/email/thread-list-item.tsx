@@ -14,7 +14,7 @@ import { accountTintKey, generateAvatarColor } from "@/lib/account-utils";
 import { useUIStore } from "@/stores/ui-store";
 import { useEmailStore } from "@/stores/email-store";
 import { useAccountStore, type AccountEntry } from "@/stores/account-store";
-import { getThreadTagIds, getEmailTagIds } from "@/lib/thread-utils";
+import { emailKeyFor, getThreadTagIds, getEmailTagIds } from "@/lib/thread-utils";
 import { useKeywordFormat } from "@/hooks/use-keyword-format";
 import { useTagDisplay } from "@/hooks/use-tag-display";
 import { TagBadge, TAG_GROUP_CLASS, TAG_LOZENGE_CLASS } from "./tag-badge";
@@ -46,6 +46,70 @@ function UnreadDot({ density, compactAvatar }: { density: string; compactAvatar:
     >
       <Circle className="w-2 h-2 fill-unread text-unread" />
       <span className="sr-only">{t('unread')}</span>
+    </div>
+  );
+}
+
+/**
+ * The Gmail skin's leading controls: a checkbox and a star, both always
+ * visible and both acting on the row without opening it. They take the slot
+ * the other layouts give to the sender avatar, which Gmail's web client has
+ * no equivalent of.
+ */
+function GmailRowLead({
+  checked,
+  onToggleChecked,
+  starred,
+  onToggleStar,
+  selectLabel,
+  starLabel,
+}: {
+  checked: boolean;
+  onToggleChecked: (e: React.MouseEvent) => void;
+  starred: boolean;
+  onToggleStar?: () => void;
+  selectLabel: string;
+  starLabel: string;
+}) {
+  return (
+    <div className="flex items-center gap-0.5 flex-shrink-0 self-center">
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={checked}
+        aria-label={selectLabel}
+        onClick={onToggleChecked}
+        className={cn(
+          "p-1 rounded-full transition-colors hover:bg-foreground/10",
+          checked && "text-primary"
+        )}
+      >
+        {checked ? (
+          <CheckSquare className="w-[18px] h-[18px]" />
+        ) : (
+          <Square className="w-[18px] h-[18px] text-muted-foreground" />
+        )}
+      </button>
+      {onToggleStar && (
+        <button
+          type="button"
+          aria-label={starLabel}
+          aria-pressed={starred}
+          title={starLabel}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleStar();
+          }}
+          className="p-1 rounded-full transition-colors hover:bg-foreground/10"
+        >
+          <Star
+            className={cn(
+              "w-[18px] h-[18px]",
+              starred ? "fill-amber-400 text-amber-400" : "text-muted-foreground/60"
+            )}
+          />
+        </button>
+      )}
     </div>
   );
 }
@@ -160,6 +224,7 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
   function SingleEmailItem({ email, selected, onClick, onDoubleClick, onContextMenu, showPreview, rowTint, onToggleStar, onMarkAsRead, onDelete, onArchive, onSetTag, onMarkAsSpam, onUndoSpam, onOpenAttachment }, ref) {
     const t = useTranslations('email_viewer');
     const tBatch = useTranslations('email_list.batch_actions');
+    const tHover = useTranslations('settings.email_behavior.hover_actions');
     const tStatus = useTranslations('email_list');
     const isUnread = !email.keywords?.$seen;
     const isStarred = email.keywords?.$flagged;
@@ -182,6 +247,7 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
     const mailLayout = useSettingsStore((state) => state.mailLayout);
     const timeFormat = useSettingsStore((state) => state.timeFormat);
     const showAvatarsInJunk = useSettingsStore((state) => state.showAvatarsInJunk);
+    const uiSkin = useSettingsStore((state) => state.uiSkin);
     const hideJunkAvatarImages = currentMailboxRole === 'junk' && !showAvatarsInJunk;
     // Show the originating folder in the aggregate "All …" views.
     const showSourceFolder = isUnifiedView && !!email.sourceFolder;
@@ -189,10 +255,14 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
     const account = email.accountId ? getAccountById(email.accountId) : undefined;
     const accountColor = account?.avatarColor;
     const accountDescription = describeAccount(email.accountLabel, account);
-    const isChecked = selectedEmailKeys.has(email.id);
+    const isChecked = selectedEmailKeys.has(emailKeyFor(email));
     const isMobile = useUIStore((state) => state.isMobile);
     // The horizontal one-line "focus" layout doesn't fit on narrow screens; fall back to multi-line on mobile.
     const isFocusedMailLayout = mailLayout === 'focus' && !isMobile;
+    // Gmail leads its rows with a checkbox and a clickable star instead of an
+    // avatar, and marks unread with weight alone. Only the one-line layout is
+    // shaped that way, so the two conditions travel together.
+    const gmailRow = uiSkin === 'gmail' && isFocusedMailLayout;
     const trimmedPreview = stripInvisibleLeading(email.preview ?? '');
     const inlinePreview = showPreview && trimmedPreview ? ` ${trimmedPreview}` : '';
     // Search hits carry server snippets with the matched terms marked; they
@@ -324,13 +394,15 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
           resolvedRowTint ? resolvedRowTint : (
             selected
               ? "bg-accent"
-              : "bg-background"
+              : gmailRow && !isUnread
+                ? "bg-muted/60"
+                : "bg-background"
           ),
           selected && !resolvedRowTint && "shadow-sm",
           !resolvedRowTint && !selected && !isChecked && "hover:bg-muted hover:shadow-sm",
           !resolvedRowTint && (selected || isChecked) && "hover:bg-accent hover:shadow-sm",
           resolvedRowTint && "hover:brightness-95 dark:hover:brightness-110",
-          isUnread && !resolvedRowTint && "bg-accent/30",
+          isUnread && !resolvedRowTint && !gmailRow && "bg-accent/30",
           isChecked && "ring-2 ring-primary/20",
           isChecked && !resolvedRowTint && "bg-accent/40",
           isDragging && "opacity-50 scale-[0.98] ring-2 ring-primary/30",
@@ -365,7 +437,7 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
           style={{ gap: 'var(--density-item-gap)', paddingBlock: 'var(--density-item-py)', transform: swipeEnabled && offsetX ? `translateX(${offsetX}px)` : undefined, transition: swipeEnabled && offsetX === 0 ? 'transform 200ms ease-out' : undefined }}
         >
           {/* Checkbox - only for extra-compact density (no avatar) while in selection mode */}
-          {density === 'extra-compact' && selectedEmailKeys.size > 0 && (
+          {!gmailRow && density === 'extra-compact' && selectedEmailKeys.size > 0 && (
             <button
               onClick={handleCheckboxClick}
               role="checkbox"
@@ -388,7 +460,18 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
             </button>
           )}
 
-          {density !== 'extra-compact' && (
+          {gmailRow && (
+            <GmailRowLead
+              checked={isChecked}
+              onToggleChecked={handleCheckboxClick}
+              starred={!!isStarred}
+              onToggleStar={onToggleStar}
+              selectLabel={tBatch('select')}
+              starLabel={tHover('star')}
+            />
+          )}
+
+          {!gmailRow && density !== 'extra-compact' && (
             <SelectableAvatar
               name={sender?.name}
               email={sender?.email}
@@ -401,12 +484,13 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
             />
           )}
 
-          {isUnread && (
+          {isUnread && !gmailRow && (
             <UnreadDot density={density} compactAvatar={isFocusedMailLayout} />
           )}
 
           <div className="flex-1 min-w-0">
             {isFocusedMailLayout ? (
+              <>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-1 items-center gap-3">
                   {isUnifiedView && email.accountId && accountColor && !tintListRowsByAccount && (
@@ -447,7 +531,7 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
                 </div>
                 <div className="flex items-center gap-2.5 shrink-0">
                   {isPinned && <StatusIcon icon={Pin} label={tStatus('pinned')} className="w-3.5 h-3.5 text-primary" />}
-                  {isStarred && <StatusIcon icon={Star} label={tStatus('starred')} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />}
+                  {isStarred && !gmailRow && <StatusIcon icon={Star} label={tStatus('starred')} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />}
                   {isAnswered && !isForwarded && <StatusIcon icon={Reply} label={tStatus('replied')} className="w-3.5 h-3.5 text-muted-foreground" />}
                   {isForwarded && !isAnswered && <StatusIcon icon={Forward} label={tStatus('forwarded')} className="w-3.5 h-3.5 text-muted-foreground" />}
                   {isAnswered && isForwarded && (
@@ -476,6 +560,14 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
                   )}
                 </div>
               </div>
+              {gmailRow && onOpenAttachment && (
+                <AttachmentChips
+                  attachments={email.attachments}
+                  onOpen={onOpenAttachment}
+                  className="mt-1.5"
+                />
+              )}
+              </>
             ) : (
               <>
                 <div className="flex items-center justify-between gap-2 mb-1">
@@ -637,16 +729,22 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
     const t = useTranslations('threads');
     const tEmailViewer = useTranslations('email_viewer');
     const tBatch = useTranslations('email_list.batch_actions');
+    const tHover = useTranslations('settings.email_behavior.hover_actions');
     const tStatus = useTranslations('email_list');
     const showPreview = useSettingsStore((state) => state.showPreview);
     const density = useSettingsStore((state) => state.density);
     const mailLayout = useSettingsStore((state) => state.mailLayout);
     const timeFormat = useSettingsStore((state) => state.timeFormat);
     const showAvatarsInJunk = useSettingsStore((state) => state.showAvatarsInJunk);
+    const uiSkin = useSettingsStore((state) => state.uiSkin);
     const isMobile = useUIStore((state) => state.isMobile);
     const { latestEmail, participantNames, hasUnread, hasStarred, hasPinned, hasAttachment, hasAnswered, hasForwarded, emailCount } = thread;
     // The horizontal one-line "focus" layout doesn't fit on narrow screens; fall back to multi-line on mobile.
     const isFocusedMailLayout = mailLayout === 'focus' && !isMobile;
+    // Gmail leads its rows with a checkbox and a clickable star instead of an
+    // avatar, and marks unread with weight alone. Only the one-line layout is
+    // shaped that way, so the two conditions travel together.
+    const gmailRow = uiSkin === 'gmail' && isFocusedMailLayout;
     const trimmedPreview = stripInvisibleLeading(latestEmail.preview ?? '');
     const inlinePreview = showPreview && trimmedPreview ? ` ${trimmedPreview}` : '';
     // In a search the matched mail need not be the thread's latest one: show
@@ -713,7 +811,7 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
     const isSelected = selectedEmailId === latestEmail.id ||
       thread.emails.some(e => e.id === selectedEmailId);
 
-    const isChecked = thread.emails.some(e => selectedEmailKeys.has(e.id));
+    const isChecked = thread.emails.some(e => selectedEmailKeys.has(emailKeyFor(e)));
 
     if (emailCount === 1) {
       return (
@@ -742,16 +840,17 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
 
     // Toggle selection for all emails in this thread.
     const toggleThreadSelection = () => {
-      const allSelected = thread.emails.every(em => selectedEmailKeys.has(em.id));
+      const allSelected = thread.emails.every(em => selectedEmailKeys.has(emailKeyFor(em)));
       const newSelection = new Set(selectedEmailKeys);
       thread.emails.forEach(em => {
+        const key = emailKeyFor(em);
         if (allSelected) {
-          newSelection.delete(em.id);
+          newSelection.delete(key);
         } else {
-          newSelection.add(em.id);
+          newSelection.add(key);
         }
       });
-      useEmailStore.setState({ selectedEmailKeys: newSelection, lastSelectedEmailKey: latestEmail.id });
+      useEmailStore.setState({ selectedEmailKeys: newSelection, lastSelectedEmailKey: emailKeyFor(latestEmail) });
     };
 
     const handleThreadCheckboxClick = (e: React.MouseEvent) => {
@@ -809,13 +908,15 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
             rowTint ? rowTint : (
               isSelected
                 ? "bg-accent"
-                : "bg-background"
+                : gmailRow && !hasUnread
+                  ? "bg-muted/60"
+                  : "bg-background"
             ),
             isSelected && !rowTint && "shadow-sm",
             !rowTint && !isSelected && !isChecked && "hover:bg-muted hover:shadow-sm",
             !rowTint && (isSelected || isChecked) && "hover:bg-accent hover:shadow-sm",
             rowTint && "hover:brightness-95 dark:hover:brightness-110",
-            hasUnread && !rowTint && !isSelected && "bg-accent/30",
+            hasUnread && !rowTint && !isSelected && !gmailRow && "bg-accent/30",
             isExpanded && "border-b border-border/50",
             isChecked && "ring-2 ring-primary/20",
             isChecked && !rowTint && "bg-accent/40",
@@ -837,7 +938,7 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
             style={{ gap: 'var(--density-item-gap)', paddingBlock: 'var(--density-item-py)' }}
           >
             {/* Checkbox for thread selection - only for extra-compact density (no avatar) while in selection mode */}
-            {density === 'extra-compact' && selectedEmailKeys.size > 0 && (
+            {!gmailRow && density === 'extra-compact' && selectedEmailKeys.size > 0 && (
               <button
                 onClick={handleThreadCheckboxClick}
                 role="checkbox"
@@ -860,7 +961,18 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
               </button>
             )}
 
-            {density !== 'extra-compact' && (
+            {gmailRow && (
+              <GmailRowLead
+                checked={isChecked}
+                onToggleChecked={handleThreadCheckboxClick}
+                starred={!!hasStarred}
+                onToggleStar={onToggleStar ? () => onToggleStar(latestEmail) : undefined}
+                selectLabel={tBatch('select')}
+                starLabel={tHover('star')}
+              />
+            )}
+
+            {!gmailRow && density !== 'extra-compact' && (
               <div className="relative flex-shrink-0 self-center">
                 <SelectableAvatar
                   name={avatarPerson?.name}
@@ -902,12 +1014,13 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
               </div>
             )}
 
-            {hasUnread && (
+            {hasUnread && !gmailRow && (
               <UnreadDot density={density} compactAvatar={isFocusedMailLayout} />
             )}
 
             <div className="flex-1 min-w-0">
               {isFocusedMailLayout ? (
+                <>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex min-w-0 flex-1 items-center gap-3">
                     {isUnifiedView && latestEmail.accountId && threadAccountColor && !tintListRowsByAccount && (
@@ -954,7 +1067,7 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
                   </div>
                   <div className="flex items-center gap-2.5 shrink-0">
                     {hasPinned && <StatusIcon icon={Pin} label={tStatus('pinned')} className="w-3.5 h-3.5 text-primary" />}
-                    {hasStarred && <StatusIcon icon={Star} label={tStatus('starred')} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />}
+                    {hasStarred && !gmailRow && <StatusIcon icon={Star} label={tStatus('starred')} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />}
                     {hasAnswered && !hasForwarded && <StatusIcon icon={Reply} label={tStatus('replied')} className="w-3.5 h-3.5 text-muted-foreground" />}
                     {hasForwarded && !hasAnswered && <StatusIcon icon={Forward} label={tStatus('forwarded')} className="w-3.5 h-3.5 text-muted-foreground" />}
                     {hasAnswered && hasForwarded && (
@@ -983,6 +1096,14 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
                     )}
                   </div>
                 </div>
+                {gmailRow && onOpenAttachment && (
+                  <AttachmentChips
+                    attachments={latestEmail.attachments}
+                    onOpen={(a) => onOpenAttachment(latestEmail, a)}
+                    className="mt-1.5"
+                  />
+                )}
+                </>
               ) : (
                 <>
                   <div className="flex items-center justify-between gap-2 mb-1">
