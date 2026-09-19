@@ -159,5 +159,6 @@
 - Anonymous instance telemetry, off unless you enable it through the admin UI, the installer, or `BULWARK_TELEMETRY=on`. It reports version, platform, bucketed account counts, and feature toggles.
 - Docker images on GHCR, for release (`main`) and development (`dev`)
 - Bulwark Lite: a static export of the client (`npm run build:lite`, `bulwark-lite-<version>.zip` on every release) for plain static hosts; runtime `config.json`, cookie-free token login against Stalwart, no admin/plugin/sync features
+- Bulwark Lite for Stalwart: `bulwark-lite-stalwart.zip` installs as a Stalwart `Application` (served by Stalwart itself under any prefix, same origin, zero configuration)
 - `NEXT_PUBLIC_BASE_PATH` mounts the app at a subpath behind a reverse proxy
 - Demo mode runs on fixture data, no mail server required

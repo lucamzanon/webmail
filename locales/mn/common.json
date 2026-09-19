@@ -1161,6 +1161,7 @@
         "status_active": "Энэ төхөөрөмжид идэвхтэй байна",
         "status_inactive": "Энэ төхөөрөмж дээр идэвхжээгүй",
         "status_unsupported": "Энэ хөтөч Web Push-ийг дэмждэггүй",
+        "status_lite": "Web Push is not available in Bulwark Lite; it needs the Bulwark server.",
         "status_busy": "Ажиллаж байна…",
         "enable": "Идэвхжүүлэх",
         "reenable": "Дахин бүртгүүлэх",

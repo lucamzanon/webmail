@@ -126,7 +126,8 @@ describe('auth-store in the static Lite build', () => {
     expect(state.authMode).toBe('oauth');
     expect(state.accessToken).toBe('AT-1');
     expect(state.client?.getAuthHeader()).toBe('Bearer AT-1');
-    expect(readLiteRefreshToken(0)).toEqual({ serverUrl: SERVER, username: 'alice', refreshToken: 'RT-1' });
+    // The client the token was issued to rides along, so refreshes present the same one.
+    expect(readLiteRefreshToken(0)).toEqual({ serverUrl: SERVER, username: 'alice', refreshToken: 'RT-1', clientId: 'bulwark-webmail' });
     expect(localStorage.getItem('bulwark-lite:refresh:0')).not.toBeNull();
     // No password anywhere in web storage.
     const dump = JSON.stringify({ ...localStorage, ...sessionStorage });
@@ -146,17 +147,47 @@ describe('auth-store in the static Lite build', () => {
     expect(JSON.parse(sessionStorage.getItem('bulwark-lite:refresh:0')!).refreshToken).toBe('RT-1');
   });
 
-  it('a plain password login without "remember me" connects with Basic auth and stores nothing', async () => {
+  it('a plain password login without "remember me" still uses token login and keeps the refresh token with the tab', async () => {
     const { calls } = stalwartFetch();
 
     const ok = await useAuthStore.getState().login(SERVER, 'alice', 'pw');
 
     expect(ok).toBe(true);
-    expect(calls).toEqual([]);
+    expect(calls).toEqual([`POST ${SERVER}/api/auth`, `POST ${SERVER}/auth/token`]);
     expect(connectSpy).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState().authMode).toBe('oauth');
+    expect(useAuthStore.getState().client?.getAuthHeader()).toBe('Bearer AT-1');
+    // Tab-scoped: sessionStorage only, so a reload keeps the session and closing the tab ends it.
+    expect(sessionStorage.getItem('bulwark-lite:refresh:0')).toContain('"refreshToken":"RT-1"');
+    expect(localStorage.getItem('bulwark-lite:refresh:0')).toBeNull();
+    expect(readLiteBasicSession(0)).toBeNull();
+  });
+
+  it('without token login and without "remember me" the Basic session is still kept for the tab', async () => {
+    const { calls } = stalwartFetch({ loginStatus: 404 });
+
+    const ok = await useAuthStore.getState().login(SERVER, 'alice', 'pw');
+
+    expect(ok).toBe(true);
+    expect(calls).toEqual([`POST ${SERVER}/api/auth`]);
     expect(useAuthStore.getState().authMode).toBe('basic');
-    expect(useAuthStore.getState().client?.getAuthHeader()).toBe(`Basic ${btoa('alice:pw')}`);
-    expect(liteStorageKeys()).toEqual([]);
+    expect(readLiteBasicSession(0)).toEqual({ serverUrl: SERVER, username: 'alice', password: 'pw' });
+    expect(localStorage.getItem('bulwark-lite:basic:0')).toBeNull();
+    expect(liteStorageKeys().filter((k) => k.startsWith('bulwark-lite:refresh:'))).toEqual([]);
+  });
+
+  it('a Basic account without "remember me" is restored from the tab session instead of being evicted', async () => {
+    saveLiteBasicSession(0, { serverUrl: SERVER, username: 'alice', password: 'pw' });
+    const id = registerAccount('basic');
+    useAccountStore.getState().updateAccount(id, { rememberMe: false });
+    stalwartFetch();
+
+    await useAuthStore.getState().checkAuth();
+
+    const state = useAuthStore.getState();
+    expect(state.isAuthenticated).toBe(true);
+    expect(state.client?.getAuthHeader()).toBe(`Basic ${btoa('alice:pw')}`);
+    expect(useAccountStore.getState().accounts.map((a) => a.id)).toEqual([id]);
   });
 
   it('surfaces a missing MFA code as totp_required', async () => {

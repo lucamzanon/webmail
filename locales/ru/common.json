@@ -1189,6 +1189,7 @@
         "status_busy": "Выполняется…",
         "status_inactive": "Не включено на этом устройстве",
         "status_unsupported": "Этот браузер не поддерживает Web Push",
+        "status_lite": "Web Push is not available in Bulwark Lite; it needs the Bulwark server.",
         "title": "Фоновые уведомления",
         "devices_title": "Зарегистрированные устройства",
         "devices_desc": "Все устройства, зарегистрированные для получения фоновых уведомлений этой учётной записи. После отзыва устройство сразу перестаёт их получать.",

@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import type { SettingsPolicy, FeatureGates, SettingRestriction, ThemePolicy } from '@/lib/admin/types';
 import { DEFAULT_POLICY, DEFAULT_THEME_POLICY } from '@/lib/admin/types';
 import { apiFetch } from '@/lib/browser-navigation';
-import { IS_LITE, LITE_POLICY_PATH } from '@/lib/lite';
+import { IS_LITE, IS_LITE_STALWART, LITE_POLICY_PATH, withLiteBuildId } from '@/lib/lite';
 import { applyLitePolicy } from '@/lib/lite-config';
 
 interface PolicyState {
@@ -32,7 +32,10 @@ export const usePolicyStore = create<PolicyState>()((set, get) => ({
     // the server stay pinned off either way (lib/lite-config.ts).
     const fallback = IS_LITE ? { policy: applyLitePolicy({}) } : {};
     try {
-      const res = await apiFetch(IS_LITE ? LITE_POLICY_PATH : '/api/admin/policy', IS_LITE ? { cache: 'no-store' } : undefined);
+      // Stalwart serves bundle files immutably: a build-id URL instead of no-store.
+      const res = IS_LITE_STALWART
+        ? await apiFetch(withLiteBuildId(LITE_POLICY_PATH))
+        : await apiFetch(IS_LITE ? LITE_POLICY_PATH : '/api/admin/policy', IS_LITE ? { cache: 'no-store' } : undefined);
       if (res.ok) {
         const data = await res.json();
         set({ policy: IS_LITE ? applyLitePolicy(data) : data, loaded: true });

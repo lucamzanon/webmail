@@ -1161,6 +1161,7 @@
         "status_active": "فعال روی این دستگاه",
         "status_inactive": "فعال نشده",
         "status_unsupported": "مرورگر پشتیبانی نمی‌کند",
+        "status_lite": "Web Push is not available in Bulwark Lite; it needs the Bulwark server.",
         "status_busy": "در حال کار…",
         "enable": "فعال کردن",
         "reenable": "ثبت مجدد",

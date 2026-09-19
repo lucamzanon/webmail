@@ -1161,6 +1161,7 @@
         "status_active": "Activ pe acest dispozitiv",
         "status_inactive": "Nu este activat pe acest dispozitiv",
         "status_unsupported": "Acest browser nu acceptă Web Push",
+        "status_lite": "Web Push is not available in Bulwark Lite; it needs the Bulwark server.",
         "status_busy": "Se lucrează…",
         "enable": "Activați",
         "reenable": "Reînregistrează-te",

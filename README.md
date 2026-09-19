@@ -95,7 +95,7 @@ npm run build && npm start
 
 Bulwark Lite is the same client exported as static files: no Node.js process, upload the folder to any static host (nginx, Caddy, Netlify, Cloudflare Pages, GitHub Pages, an S3 bucket). Mail, calendar, contacts and files talk to the JMAP server straight from the browser, so the only server-side requirement is CORS on the mail server (`http.permissive-cors = true` in Stalwart).
 
-Every release ships `bulwark-lite-<version>.zip`, and the **Build Static Lite** workflow can be dispatched with a fixed server URL, app name, sub-path mount, locale subset or the demo flag. To build locally:
+Every release ships `bulwark-lite-<version>.zip` (and `bulwark-lite-stalwart.zip`, see [Install on Stalwart](#install-on-stalwart)), and the **Build Static Lite** workflow can be dispatched with a fixed server URL, app name, sub-path mount, locale subset or the demo flag. To build locally:
 
 ```bash
 git worktree add ../bulwark-lite HEAD   # disposable checkout: the build deletes server-only trees
@@ -106,7 +106,45 @@ npm run lite:serve                       # http://localhost:4173/
 
 `out/` then holds one shell per locale and surface plus the deployer files: `config.json` (server URL, app name, login branding; editable without a rebuild), `policy.json`, `manifest.webmanifest`, `_redirects` and `_headers` (Netlify/Cloudflare), `nginx.conf.example`, `Caddyfile.example`, a `404.html` that replays deep links on hosts without rewrite rules, and `LITE-README.md` with the three-step setup. Build inputs: `LITE_JMAP_SERVER_URL`, `LITE_APP_NAME`, `LITE_ALLOW_CUSTOM_ENDPOINT`, `LITE_REMEMBER_ME`, `LITE_DEMO_MODE`, `LITE_LOCALES` (e.g. `en,de`), `NEXT_PUBLIC_BASE_PATH`.
 
-Lite keeps everything that runs in the browser (multi-account, password and TOTP login, "remember me" via Stalwart refresh tokens, themes, deep links, demo mode). Server-backed features are off: the admin console and setup wizard, plugins and sidebar apps, settings sync, OAuth/SSO, the account security tab, ICS URL subscriptions and CalDAV discovery, sender favicons, office editing, web push, the update banner. `scripts/lite/verify.mjs` fails the build if a client chunk references a server endpoint that is not documented in `scripts/lite/lib.mjs`, and `npm run test:lite-smoke` drives a demo export with Playwright.
+Lite keeps everything that runs in the browser (multi-account, password and TOTP login, "remember me" via Stalwart refresh tokens, themes, deep links, demo mode). Server-backed features are off: the admin console and setup wizard, plugins and sidebar apps, settings sync, OAuth/SSO, the account security tab, ICS URL subscriptions and CalDAV discovery, sender favicons, office editing, web push, the update banner, the "Default apps" protocol-handler registration. Password logins go through Stalwart's token endpoints in the browser (`/api/auth` + `/auth/token`, so those need CORS as well); without "remember me" the refresh token lives in sessionStorage and the session ends with the tab. `scripts/lite/verify.mjs` fails the build if a client chunk references a server endpoint that is not documented in `scripts/lite/lib.mjs`, and `npm run test:lite-smoke` drives a demo export with Playwright.
+
+#### Install on Stalwart
+
+Stalwart 0.16 can host the webmail itself as an `Application`: it downloads a zip, serves it under a path of its own HTTP listener, and the webmail talks to the same origin's JMAP, `/api/auth` and `/auth/token`, so there is no server URL to enter and no CORS to set up. Every release ships `bulwark-lite-stalwart.zip` for this (built with `npm run build:lite -- --target=stalwart`). An administrator creates the Application and then asks Stalwart to fetch it. Creating it alone mounts nothing:
+
+```bash
+stalwart-cli create Application \
+  --field description='Bulwark Webmail' \
+  --field resourceUrl='https://github.com/bulwarkmail/webmail/releases/latest/download/bulwark-lite-stalwart.zip' \
+  --field 'urlPrefix={"/webmail":true}'
+stalwart-cli create Action/UpdateApps
+```
+
+The same in the web admin: **Settings > Web Applications**, create the entry, then run the "update applications" action (or restart Stalwart). Over JMAP, as an administrator:
+
+```json
+{
+  "using": ["urn:ietf:params:jmap:core", "urn:stalwart:jmap"],
+  "methodCalls": [
+    ["x:Application/set", { "create": { "webmail": {
+      "description": "Bulwark Webmail",
+      "resourceUrl": "https://github.com/bulwarkmail/webmail/releases/latest/download/bulwark-lite-stalwart.zip",
+      "urlPrefix": { "/webmail": true }
+    } } }, "0"],
+    ["x:Action/set", { "create": { "u": { "@type": "UpdateApps" } } }, "1"]
+  ]
+}
+```
+
+Then open `https://<stalwart host>/webmail/`. Notes:
+
+- **Permissions**: `sysApplicationCreate` (plus `sysApplicationGet`/`Query`/`Update`/`Destroy` to manage it) and `actionUpdateApps`.
+- **Prefix**: `urlPrefix` matches the first path segment only, and one bundle may be mounted under several prefixes; it reads its prefix at runtime. Stalwart routes these segments itself, so they cannot host an Application: `jmap`, `dav`, `.well-known`, `auth`, `api`, `scim`, `mail`, `calendar`, `autodiscover`, `login`, `device`, `metrics`, `healthz`, `logo`, `form`, `robots.txt`, and the web admin's `admin` and `account`.
+- **Updates**: Stalwart caches the zip for `autoUpdateFrequency` (default 90 days) and downloads `resourceUrl` again at the next restart or `UpdateApps` after that. `UpdateApps` always re-downloads, so it is also how to update right away. Open tabs switch to the new build on their next navigation (one full page load); files the app fetches without a content hash carry the build id, so Stalwart's year-long cache headers never pin an old build.
+- **Pinning**: use `https://github.com/bulwarkmail/webmail/releases/download/v<version>/bulwark-lite-stalwart.zip` as `resourceUrl`.
+- **OAuth client**: login uses the Application's `oauthClientId`, or `bulwark-webmail` when it is empty. If client registration is required, register that id with the redirect URI `https://<stalwart host>/<prefix>/` (one per prefix).
+- **Minimum version**: Stalwart 0.16.0 (0.16.19 for `oauthClientId`).
+- **Differences from the static-host zip**: one entry document boots every route (Stalwart has no rewrite rules), no `_redirects`/`_headers`/nginx/Caddy files and no `404.html`, `config.json` defaults to the serving Stalwart and hides the server field, and `manifest.json` replaces `manifest.webmanifest`. The bundle is read-only; to rename or rebrand it, run the **Build Static Lite** workflow (or the build above with `LITE_APP_NAME` etc.), host the resulting `bulwark-lite-stalwart.zip` yourself and point `resourceUrl` at it.
 
 ### Development
 

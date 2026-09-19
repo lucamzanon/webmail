@@ -1,4 +1,5 @@
 import { generateCodeVerifier, generateCodeChallenge } from '@/lib/oauth/pkce';
+import { IS_LITE_STALWART, getLiteInjectedClientId } from '@/lib/lite';
 
 /**
  * Cookie-free sessions for the static Lite build.
@@ -31,6 +32,15 @@ import { generateCodeVerifier, generateCodeChallenge } from '@/lib/oauth/pkce';
  */
 export const LITE_CLIENT_ID = 'bulwark-webmail';
 
+/**
+ * The client id Lite presents to Stalwart: the `oauthClientId` of the
+ * Stalwart `Application` that serves the bundle (injected into the root
+ * index.html, see lib/lite.ts) when there is one, else `LITE_CLIENT_ID`.
+ */
+export function getLiteClientId(): string {
+  return getLiteInjectedClientId() || LITE_CLIENT_ID;
+}
+
 export type LiteLoginErrorCode =
   | 'endpoint_missing'
   | 'totp_required'
@@ -56,6 +66,8 @@ interface StoredRefreshToken {
   serverUrl: string;
   username: string;
   refreshToken: string;
+  /** Client the token was issued to; refreshes must present the same one. */
+  clientId?: string;
 }
 
 interface StoredBasicSession {
@@ -209,7 +221,7 @@ export async function liteTokenLogin(params: {
   clientId?: string;
 }): Promise<LiteTokens> {
   const base = trimUrl(params.serverUrl);
-  const clientId = params.clientId || LITE_CLIENT_ID;
+  const clientId = params.clientId || getLiteClientId();
   const verifier = generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
 
@@ -274,9 +286,10 @@ export async function liteTokenLogin(params: {
  * throws `refresh_rejected`; a network failure or 5xx propagates untouched so
  * callers treat it as an outage, not a sign-out.
  */
-export async function liteRefreshTokens(slot: number, clientId = LITE_CLIENT_ID): Promise<LiteTokens> {
+export async function liteRefreshTokens(slot: number, clientIdOverride?: string): Promise<LiteTokens> {
   const stored = readLiteRefreshToken(slot);
   if (!stored) throw new LiteLoginError('refresh_rejected', 401, 'no refresh token');
+  const clientId = clientIdOverride || stored.clientId || getLiteClientId();
 
   const response = await fetch(`${stored.serverUrl}/auth/token`, {
     method: 'POST',
@@ -321,6 +334,9 @@ const probeCache = new Map<string, Promise<boolean | null>>();
 export function probeLiteTokenLogin(serverUrl: string): Promise<boolean | null> {
   const base = trimUrl(serverUrl);
   if (!/^https?:\/\//.test(base)) return Promise.resolve(false);
+  // Served by Stalwart itself (an Application bundle, 0.16+): the page's own
+  // origin has /api/auth. Probing would only log a 400 for the empty body.
+  if (IS_LITE_STALWART && typeof window !== 'undefined' && base === window.location.origin) return Promise.resolve(true);
   let pending = probeCache.get(base);
   if (!pending) {
     pending = fetch(`${base}/api/auth`, {

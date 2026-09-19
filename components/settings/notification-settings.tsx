@@ -22,6 +22,7 @@ import {
   revokePushDevice,
 } from '@/lib/web-push';
 import type { PushDevice } from '@/lib/web-push';
+import { IS_LITE } from '@/lib/lite';
 import {
   resolveActiveRelayUrl,
   resolvePushRelayOptions,
@@ -104,8 +105,10 @@ export function NotificationSettings() {
 
   const busy = pushStatus.kind === 'busy';
   const pushEnabled = pushStatus.kind === 'enabled';
+  // In the static Lite build push is off by design (no service worker, see
+  // components/service-worker-registration.tsx), not a browser limitation.
   const statusDescription = pushStatus.kind === 'unsupported'
-    ? `${t('push.status_unsupported')} ${t('push.ios_hint')}`
+    ? (IS_LITE ? t('push.status_lite') : `${t('push.status_unsupported')} ${t('push.ios_hint')}`)
     : busy
       ? t('push.status_busy')
       : pushEnabled

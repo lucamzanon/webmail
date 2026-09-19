@@ -76,10 +76,13 @@ function trimUrl(value: string): string {
  *   so an unedited download still lets people type their server.
  * - `rememberMeEnabled` defaults to on; the login page still hides the box for
  *   servers without Stalwart's token login (see lib/auth/lite-tokens.ts).
+ * - `defaults.jmapServerUrl` (the Stalwart build passes the page origin) fills
+ *   an empty server URL, and the server field then stays hidden unless
+ *   config.json explicitly allows it.
  */
-export function applyLiteConfig(raw: unknown): ConfigData {
+export function applyLiteConfig(raw: unknown, defaults?: { jmapServerUrl?: string }): ConfigData {
   const input = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  const jmapServerUrl = trimUrl(str(input.jmapServerUrl, ''));
+  const jmapServerUrl = trimUrl(str(input.jmapServerUrl, '')) || trimUrl(defaults?.jmapServerUrl ?? '');
   const jmapServers = Array.isArray(input.jmapServers)
     ? (input.jmapServers as unknown[])
         .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === 'object')
@@ -124,6 +127,14 @@ export function applyLiteConfig(raw: unknown): ConfigData {
     parentOrigin: str(input.parentOrigin, ''),
     ...LITE_FORCED_FLAGS,
   };
+}
+
+/**
+ * Zero-config defaults for a bundle served by Stalwart itself: the JMAP
+ * server is the page's own origin (so no CORS), and there is nothing to type.
+ */
+export function liteStalwartDefaults(): { jmapServerUrl: string } {
+  return { jmapServerUrl: typeof window === 'undefined' ? '' : window.location.origin };
 }
 
 /**

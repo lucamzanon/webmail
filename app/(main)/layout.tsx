@@ -15,7 +15,7 @@ import {
 } from "@/lib/admin/domain-branding";
 import { withBasePath } from "@/lib/browser-navigation";
 import { locales, defaultLocale } from "@/i18n/routing";
-import { IS_LITE } from "@/lib/lite";
+import { IS_LITE, LITE_MOUNT_GLOBAL } from "@/lib/lite";
 import "../globals.css";
 
 // This layout renders <html> and sits ABOVE the [locale] segment, so
@@ -239,7 +239,7 @@ function liteLocaleBootstrap(): string {
                 try {
                   var locales = ${JSON.stringify([...locales])};
                   var rtl = ${JSON.stringify(rtl)};
-                  var base = ${JSON.stringify(basePath)};
+                  var base = ${JSON.stringify(basePath)} || (typeof window.${LITE_MOUNT_GLOBAL} === 'string' ? window.${LITE_MOUNT_GLOBAL} : '');
                   var path = location.pathname;
                   if (base && path.indexOf(base) === 0) path = path.slice(base.length);
                   var seg = path.split('/').filter(Boolean)[0];

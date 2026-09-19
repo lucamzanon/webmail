@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { plainPort } from "./playwright.config";
 
 /**
  * Drives a Lite export built with LITE_DEMO_MODE=true. Everything runs in the
@@ -10,16 +11,20 @@ import { test, expect, type Page } from "@playwright/test";
  *   - the demo account signs in and the mail list renders,
  *   - top-level navigation between static shells works client-side,
  *   - a deep link reload keeps its URL and the shell still hydrates,
- *   - a deep link parked by the 404 shim is replayed by the surface,
+ *   - on a host without rewrites, 404.html parks the deep link and the
+ *     surface replays it (the exported 404.html must be the Lite shim, not
+ *     Next's default not-found page),
  *   - no request ever targets a server endpoint on the Lite origin.
  */
 
-async function loginAsDemo(page: Page) {
-  await page.goto("/en/login/");
+const PLAIN_ORIGIN = `http://localhost:${plainPort}`;
+
+async function loginAsDemo(page: Page, origin = "") {
+  await page.goto(`${origin}/en/login/`);
   const demoButton = page.getByRole("button", { name: /demo/i }).first();
   await expect(demoButton).toBeVisible({ timeout: 30_000 });
   await demoButton.click();
-  await page.waitForURL(/\/en\/?(mail\/?)?(\?.*)?$/, { timeout: 30_000 });
+  await page.waitForURL(/\/en\/?(mail\/?.*)?(\?.*)?$/, { timeout: 30_000 });
 }
 
 test.describe("Bulwark Lite demo export", () => {
@@ -45,6 +50,15 @@ test.describe("Bulwark Lite demo export", () => {
     expect(apiRequests).toEqual([]);
   });
 
+  test("the root shim honours the language chosen in Settings", async ({ page }) => {
+    await page.goto("/en/login/");
+    await page.evaluate(() => {
+      localStorage.setItem("locale-storage", JSON.stringify({ state: { locale: "de" }, version: 0 }));
+    });
+    await page.goto("/");
+    await page.waitForURL(/\/de\/$/);
+  });
+
   test("demo login, surface switch and deep-link reload", async ({ page }) => {
     await loginAsDemo(page);
 
@@ -68,16 +82,31 @@ test.describe("Bulwark Lite demo export", () => {
     expect(apiRequests).toEqual([]);
   });
 
-  test("a deep link parked by the 404 shim is replayed on the surface", async ({ page }) => {
-    await loginAsDemo(page);
-    // What app/(main)/not-found.tsx does on a host without rewrite rules:
-    // park the link, load the surface root.
-    await page.evaluate(() => {
-      sessionStorage.setItem("bulwark-lite:pending-path", "/en/mail/folder/inbox");
-    });
-    await page.goto("/en/mail/");
+  test("404.html is the Lite shim, not Next's default not-found page", async ({ page }) => {
+    const res = await page.request.get("/404.html");
+    expect(res.ok()).toBe(true);
+    const html = await res.text();
+    expect(html).toContain("bulwark-lite:pending-path");
+    expect(html).not.toContain("__next_f");
+  });
+
+  test("on a host without rewrites a deep link is parked by 404.html and replayed", async ({ page }) => {
+    // The plain server answers /en/mail/folder/inbox with 404.html (status
+    // 404), exactly like GitHub Pages. The shim parks the link, loads
+    // /en/mail/, and the surface restores the URL.
+    await loginAsDemo(page, PLAIN_ORIGIN);
+    const response = await page.goto(`${PLAIN_ORIGIN}/en/mail/folder/inbox`);
+    expect(response?.status()).toBe(404);
     await page.waitForFunction(() => window.location.pathname === "/en/mail/folder/inbox", null, { timeout: 30_000 });
+    await expect(page.locator("body")).toContainText(/inbox/i, { timeout: 30_000 });
     expect(await page.evaluate(() => sessionStorage.getItem("bulwark-lite:pending-path"))).toBeNull();
+
+    // A path outside the known surfaces stays a plain 404 page.
+    const dead = await page.goto(`${PLAIN_ORIGIN}/en/nope`);
+    expect(dead?.status()).toBe(404);
+    await page.waitForTimeout(500);
+    expect(new URL(page.url()).pathname).toBe("/en/nope");
+    await expect(page.locator("body")).toContainText(/404/);
     expect(apiRequests).toEqual([]);
   });
 });

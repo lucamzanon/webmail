@@ -1185,6 +1185,7 @@
         "status_active": "Aktívne na tomto zariadení",
         "status_inactive": "Nie je povolené na tomto zariadení",
         "status_unsupported": "Tento prehliadač nepodporuje Web Push",
+        "status_lite": "Web Push is not available in Bulwark Lite; it needs the Bulwark server.",
         "status_busy": "Pracujem…",
         "enable": "Povoliť",
         "reenable": "Znovu zaregistrovať",

@@ -89,6 +89,7 @@ import { useIsEmbedded } from '@/hooks/use-is-embedded';
 import { useIsFocusedProTab } from '@/hooks/use-pane-context';
 import { ResizeHandle } from '@/components/layout/resize-handle';
 import { useConfig } from '@/hooks/use-config';
+import { IS_LITE } from '@/lib/lite';
 import { usePolicyStore } from '@/stores/policy-store';
 import { cn } from '@/lib/utils';
 import {
@@ -535,7 +536,8 @@ export function SettingsApp({ linkSegments: routeSegments }: SettingsAppProps = 
     { id: 'account', label: t('tabs.account'), icon: tabIcons.account, group: 'general' },
     { id: 'language', label: t('tabs.language'), icon: tabIcons.language, group: 'general' },
     { id: 'notifications', label: t('tabs.notifications'), icon: tabIcons.notifications, group: 'general' },
-    { id: 'protocol_handlers', label: t('tabs.protocol_handlers'), icon: tabIcons.protocol_handlers, group: 'general' },
+    // The handler URLs point at /protocol/*, server routes the static Lite export does not ship.
+    ...(IS_LITE ? [] : [{ id: 'protocol_handlers' as Tab, label: t('tabs.protocol_handlers'), icon: tabIcons.protocol_handlers, group: 'general' as TabGroup }]),
 
     // Appearance
     { id: 'appearance', label: t('tabs.appearance'), icon: tabIcons.appearance, group: 'appearance' },
