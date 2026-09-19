@@ -1,8 +1,9 @@
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, act, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ThreadListItem } from '../thread-list-item';
 import { useSettingsStore, DEFAULT_KEYWORDS } from '@/stores/settings-store';
 import { useEmailStore } from '@/stores/email-store';
+import { useUIStore } from '@/stores/ui-store';
 import { emailKeyFor, groupEmailsByThread } from '@/lib/thread-utils';
 import type { Email } from '@/lib/jmap/types';
 
@@ -56,6 +57,10 @@ function renderRow(email: Email) {
     />,
   );
 }
+
+beforeEach(() => {
+  useUIStore.setState({ isMobile: false, isTablet: false, isDesktop: true });
+});
 
 describe('ThreadListItem tag badge', () => {
   beforeEach(() => {
@@ -239,6 +244,29 @@ describe('ThreadListItem row content', () => {
     renderRow(first);
 
     expect(screen.getByRole('checkbox')).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('puts the star at the trailing edge in the Gmail mobile row', () => {
+    useSettingsStore.setState({ uiSkin: 'gmail', mailLayout: 'split' });
+    useUIStore.setState({ isMobile: true, isTablet: false, isDesktop: false });
+    const onToggleStar = vi.fn();
+    const [thread] = groupEmailsByThread([makeEmail()]);
+    const { container } = render(
+      <ThreadListItem
+        thread={thread}
+        isExpanded={false}
+        onToggleExpand={() => {}}
+        onEmailSelect={() => {}}
+        onToggleStar={onToggleStar}
+      />,
+    );
+
+    const star = container.querySelector<HTMLButtonElement>('[data-gmail-mobile-row] button[aria-pressed]');
+    expect(star).not.toBeNull();
+    fireEvent.click(star!);
+
+    expect(onToggleStar).toHaveBeenCalledTimes(1);
+    expect(container.querySelector('[data-gmail-mobile-row]')).toBeInTheDocument();
   });
 });
 

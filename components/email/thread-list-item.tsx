@@ -114,6 +114,38 @@ function GmailRowLead({
   );
 }
 
+function GmailMobileStar({
+  starred,
+  onToggle,
+  label,
+}: {
+  starred: boolean;
+  onToggle?: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      aria-pressed={starred}
+      title={label}
+      disabled={!onToggle}
+      onClick={(event) => {
+        event.stopPropagation();
+        onToggle?.();
+      }}
+      className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-foreground/10 disabled:pointer-events-none"
+    >
+      <Star
+        className={cn(
+          "h-[18px] w-[18px]",
+          starred ? "fill-amber-400 text-amber-400" : "text-muted-foreground/70"
+        )}
+      />
+    </button>
+  );
+}
+
 function StatusIcon({ icon: Icon, label, className }: { icon: LucideIcon; label: string; className: string }) {
   return (
     <>
@@ -263,6 +295,7 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
     // avatar, and marks unread with weight alone. Only the one-line layout is
     // shaped that way, so the two conditions travel together.
     const gmailRow = uiSkin === 'gmail' && isFocusedMailLayout;
+    const gmailMobileRow = uiSkin === 'gmail' && isMobile;
     const trimmedPreview = stripInvisibleLeading(email.preview ?? '');
     const inlinePreview = showPreview && trimmedPreview ? ` ${trimmedPreview}` : '';
     // Search hits carry server snippets with the matched terms marked; they
@@ -388,9 +421,11 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
         data-subject={email.subject || ''}
         data-unread={isUnread ? 'true' : 'false'}
         data-starred={email.keywords?.$flagged ? 'true' : 'false'}
+        data-gmail-mobile-row={gmailMobileRow ? "" : undefined}
         aria-current={selected ? 'true' : undefined}
         className={cn(
           "relative group cursor-pointer select-none transition-shadow duration-200 border-b border-border overflow-hidden",
+          gmailMobileRow && "border-b-transparent",
           resolvedRowTint ? resolvedRowTint : (
             selected
               ? "bg-accent"
@@ -402,7 +437,7 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
           !resolvedRowTint && !selected && !isChecked && "hover:bg-muted hover:shadow-sm",
           !resolvedRowTint && (selected || isChecked) && "hover:bg-accent hover:shadow-sm",
           resolvedRowTint && "hover:brightness-95 dark:hover:brightness-110",
-          isUnread && !resolvedRowTint && !gmailRow && "bg-accent/30",
+          isUnread && !resolvedRowTint && !gmailRow && !gmailMobileRow && "bg-accent/30",
           isChecked && "ring-2 ring-primary/20",
           isChecked && !resolvedRowTint && "bg-accent/40",
           isDragging && "opacity-50 scale-[0.98] ring-2 ring-primary/30",
@@ -600,7 +635,7 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
                       {isPinned && (
                         <StatusIcon icon={Pin} label={tStatus('pinned')} className="w-3.5 h-3.5 text-primary" />
                       )}
-                      {isStarred && (
+                      {isStarred && !gmailMobileRow && (
                         <StatusIcon icon={Star} label={tStatus('starred')} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                       )}
                       {isAnswered && !isForwarded && (
@@ -620,7 +655,10 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <div className={cn(
+                    "flex items-center gap-1.5 flex-shrink-0",
+                    gmailMobileRow && "self-stretch flex-col justify-between gap-0"
+                  )}>
                     {showSourceFolder && <SourceFolderTag name={email.sourceFolder!} />}
                     {scheduledSendLabel ? (
                       <span
@@ -639,6 +677,13 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
                       )}>
                         {formatDate(email.receivedAt)}
                       </span>
+                    )}
+                    {gmailMobileRow && (
+                      <GmailMobileStar
+                        starred={!!isStarred}
+                        onToggle={onToggleStar}
+                        label={tHover('star')}
+                      />
                     )}
                   </div>
                 </div>
@@ -663,7 +708,8 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
 
                 {showPreview && density !== 'extra-compact' && density !== 'compact' && (
                   <p className={cn(
-                    "text-sm leading-relaxed line-clamp-2",
+                    "text-sm leading-relaxed",
+                    gmailMobileRow ? "line-clamp-1" : "line-clamp-2",
                     isUnread
                       ? "text-muted-foreground"
                       : "text-muted-foreground/80"
@@ -745,6 +791,7 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
     // avatar, and marks unread with weight alone. Only the one-line layout is
     // shaped that way, so the two conditions travel together.
     const gmailRow = uiSkin === 'gmail' && isFocusedMailLayout;
+    const gmailMobileRow = uiSkin === 'gmail' && isMobile;
     const trimmedPreview = stripInvisibleLeading(latestEmail.preview ?? '');
     const inlinePreview = showPreview && trimmedPreview ? ` ${trimmedPreview}` : '';
     // In a search the matched mail need not be the thread's latest one: show
@@ -898,11 +945,17 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
     };
 
     return (
-      <div ref={ref} className={cn("border-b border-border", isThreadDragging && "opacity-50 scale-[0.98] ring-2 ring-primary/30")}>
+      <div ref={ref} className={cn(
+        "border-b border-border",
+        gmailMobileRow && "border-b-transparent",
+        isThreadDragging && "opacity-50 scale-[0.98] ring-2 ring-primary/30"
+      )}>
         <div
           {...dragHandlers}
           {...threadLongPressHandlers}
           aria-current={isSelected ? 'true' : undefined}
+          data-unread={hasUnread ? 'true' : 'false'}
+          data-gmail-mobile-row={gmailMobileRow ? "" : undefined}
           className={cn(
             "relative group cursor-pointer select-none transition-shadow duration-200 overflow-hidden",
             rowTint ? rowTint : (
@@ -916,7 +969,7 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
             !rowTint && !isSelected && !isChecked && "hover:bg-muted hover:shadow-sm",
             !rowTint && (isSelected || isChecked) && "hover:bg-accent hover:shadow-sm",
             rowTint && "hover:brightness-95 dark:hover:brightness-110",
-            hasUnread && !rowTint && !isSelected && !gmailRow && "bg-accent/30",
+            hasUnread && !rowTint && !isSelected && !gmailRow && !gmailMobileRow && "bg-accent/30",
             isExpanded && "border-b border-border/50",
             isChecked && "ring-2 ring-primary/20",
             isChecked && !rowTint && "bg-accent/40",
@@ -1139,7 +1192,7 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
                         {hasPinned && (
                           <StatusIcon icon={Pin} label={tStatus('pinned')} className="w-3.5 h-3.5 text-primary" />
                         )}
-                        {hasStarred && (
+                        {hasStarred && !gmailMobileRow && (
                           <StatusIcon icon={Star} label={tStatus('starred')} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                         )}
                         {hasAnswered && !hasForwarded && (
@@ -1159,7 +1212,10 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <div className={cn(
+                      "flex items-center gap-1.5 flex-shrink-0",
+                      gmailMobileRow && "self-stretch flex-col justify-between gap-0"
+                    )}>
                       {showSourceFolder && <SourceFolderTag name={latestEmail.sourceFolder!} />}
                       {scheduledSendLabel ? (
                         <span
@@ -1178,6 +1234,13 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
                         )}>
                           {formatDate(latestEmail.receivedAt)}
                         </span>
+                      )}
+                      {gmailMobileRow && (
+                        <GmailMobileStar
+                          starred={!!hasStarred}
+                          onToggle={onToggleStar ? () => onToggleStar(latestEmail) : undefined}
+                          label={tHover('star')}
+                        />
                       )}
                     </div>
                   </div>
@@ -1202,7 +1265,8 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
 
                   {showPreview && density !== 'extra-compact' && density !== 'compact' && (
                     <p className={cn(
-                      "text-sm leading-relaxed line-clamp-2",
+                      "text-sm leading-relaxed",
+                      gmailMobileRow ? "line-clamp-1" : "line-clamp-2",
                       hasUnread
                         ? "text-muted-foreground"
                         : "text-muted-foreground/80"

@@ -3,6 +3,7 @@
 import { Menu, ArrowLeft, Plus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useUIStore } from "@/stores/ui-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { useIsDesktop } from "@/hooks/use-media-query";
 import { cn } from "@/lib/utils";
 import { useTranslations } from "next-intl";
@@ -46,6 +47,7 @@ export function MobileHeader({
 }: MobileHeaderProps) {
   const t = useTranslations('sidebar');
   const { toggleSidebar, goBack, sidebarOpen } = useUIStore();
+  const gmailSkin = useSettingsStore((state) => state.uiSkin === 'gmail');
   // Pane-aware: in Pro split mode the viewport is desktop-wide while the
   // pane is narrow. The Tailwind `lg:hidden` variant alone would never fire
   // there, so we additionally hide via JS when the surrounding pane is
@@ -65,8 +67,12 @@ export function MobileHeader({
 
   return (
     <header
+      data-mobile-mail-header=""
       className={cn(
-        "flex items-center justify-between px-4 h-14 border-b border-border bg-background shrink-0",
+        "flex items-center justify-between h-14 shrink-0",
+        gmailSkin
+          ? "mx-2 mt-2 mb-1 rounded-full border-0 bg-muted px-2 shadow-sm"
+          : "border-b border-border bg-background px-4",
         className
       )}
     >
@@ -101,7 +107,13 @@ export function MobileHeader({
       {onOpenSearch && (
         /* Not a single button: the clear control is a button of its own, and
            nesting one inside another is invalid markup. */
-        <div className="flex-1 min-w-0 h-10 mx-1 flex items-center rounded-full bg-muted ps-3 pe-1">
+        <div
+          data-mobile-mail-search=""
+          className={cn(
+            "flex-1 min-w-0 h-10 flex items-center rounded-full pe-1",
+            gmailSkin ? "mx-0 bg-transparent ps-2" : "mx-1 bg-muted ps-3"
+          )}
+        >
           <button
             type="button"
             onClick={onOpenSearch}

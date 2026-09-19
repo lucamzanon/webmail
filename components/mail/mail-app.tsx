@@ -325,11 +325,10 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
    * and records that it is only a cursor.
    */
   const [cursorOnly, setCursorOnly] = useState(false);
-  // The Gmail skin only changes the desktop shell: it lifts search into a
-  // global header and drops the left app rail (its apps live in the header's
-  // grid instead). Mobile, tablet and the embedded Pro pane keep their own
-  // chrome, which the skin has no room for.
+  // Desktop lifts search into a global header. Mobile keeps its native
+  // one-pane flow, but reshapes that flow below to match Gmail's app chrome.
   const gmailShell = uiSkin === 'gmail' && !isMobile && !isTablet && !isEmbedded;
+  const gmailMobile = uiSkin === 'gmail' && isMobile && !isEmbedded;
   // Pane hosting (Pro shell). When this app renders inside a Pro pane, the
   // pane publishes its width and id; `isMobile` above is then pane-based,
   // and layout that would use viewport-fixed positioning must scope itself
@@ -4189,14 +4188,19 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                 if (isMobile) setActiveView('viewer');
               }}
               className={cn(
-                "absolute z-40 rounded-full shadow-lg",
-                isMobile ? "bottom-4 end-4 h-14 w-14" : "bottom-4 end-4 h-12 w-12"
+                "absolute z-40 shadow-lg",
+                gmailMobile
+                  ? "bottom-4 end-4 h-14 gap-3 rounded-2xl px-5"
+                  : isMobile
+                    ? "bottom-4 end-4 h-14 w-14 rounded-full"
+                    : "bottom-4 end-4 h-12 w-12 rounded-full"
               )}
               aria-label={t('sidebar.compose')}
               title={t('sidebar.compose_hint')}
               data-tour="compose-button"
             >
               <PenSquare className={isMobile ? "h-6 w-6" : "h-5 w-5"} />
+              {gmailMobile && <span className="text-sm font-medium">{t('sidebar.compose')}</span>}
             </Button>}
           </div>
 

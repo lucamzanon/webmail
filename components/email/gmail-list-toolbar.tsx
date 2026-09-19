@@ -134,6 +134,9 @@ export function GmailListToolbar({
   const allSelected = hasSelection
     && emails.length > 0
     && emails.every((email) => selectedEmailKeys.has(emailKeyFor(email)));
+  // Optimistic updates and demo fixtures can briefly leave the server total
+  // behind the rows already loaded. Never render an impossible "23 of 22".
+  const displayedTotal = Math.max(totalCount ?? loadedCount, loadedCount);
 
   const currentRole = mailboxes.find((mb) => mb.id === selectedMailbox)?.role
     ?? (isUnifiedView ? (unifiedRole ?? undefined) : undefined);
@@ -313,7 +316,7 @@ export function GmailListToolbar({
 
       {loadedCount > 0 && (
         <span className="text-xs text-muted-foreground tabular-nums pe-2 shrink-0">
-          {t("conversations_count", { count: loadedCount, total: totalCount ?? loadedCount })}
+          {t("conversations_count", { count: loadedCount, total: displayedTotal })}
         </span>
       )}
 
