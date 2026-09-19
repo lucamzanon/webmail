@@ -1018,6 +1018,12 @@
         "regular": "Almindelig",
         "comfortable": "Komfortabel"
       },
+      "ui_skin": {
+        "label": "Grænsefladelayout",
+        "description": "Hvor søgning, navigation og værktøjslinjer er placeret",
+        "bulwark": "Standard",
+        "gmail": "Gmail-stil"
+      },
       "animations": {
         "label": "Aktivér animationer",
         "description": "Vis glatte overgange og effekter"
@@ -2288,7 +2294,8 @@
       "next_email": "Næste e-mail",
       "previous_email": "Forrige e-mail",
       "open_email": "Åbn e-mail",
-      "close_email": "Luk / Fravaælg"
+      "close_email": "Luk / Fravaælg",
+      "go_to_folder": "Gå til mappe"
     },
     "actions": {
       "reply": "Svar",
@@ -2310,7 +2317,8 @@
       "global_search": "Søg i alt"
     },
     "threads": {
-      "expand_collapse": "Udvid/skjul tråd"
+      "expand_collapse": "Udvid/skjul tråd",
+      "select_gmail_skin": "Vælg samtalen (Gmail-skin)"
     },
     "composer": {
       "send": "Send e-mail",

@@ -51,6 +51,11 @@ interface EmailListProps {
   onLoadMoreScheduled?: () => void;
   onCancelScheduledForEdit?: (email: Email) => void | Promise<void>;
   onRescheduleScheduled?: (email: Email) => void | Promise<void>;
+  /**
+   * The Gmail skin folds the batch verbs into the single toolbar above the
+   * list, so the separate bar that would otherwise slide in here is redundant.
+   */
+  hideBatchToolbar?: boolean;
 }
 
 export function EmailList({
@@ -79,6 +84,7 @@ export function EmailList({
   onMoveToMailbox,
   onEditDraft,
   isScheduledView = false,
+  hideBatchToolbar = false,
   onLoadMoreScheduled,
   onCancelScheduledForEdit,
   onRescheduleScheduled,
@@ -385,7 +391,7 @@ export function EmailList({
         ref={batchToolbarRef}
         className={cn(
           "transition-all duration-300 ease-in-out overflow-hidden",
-          hasSelection && !isScheduledView ? "max-h-16 opacity-100" : "max-h-0 opacity-0"
+          hasSelection && !isScheduledView && !hideBatchToolbar ? "max-h-16 opacity-100" : "max-h-0 opacity-0"
         )}
       >
         <div className="px-4 py-2 border-b bg-accent/30 border-border flex items-center justify-between">

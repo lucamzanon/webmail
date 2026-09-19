@@ -1018,6 +1018,12 @@
         "regular": "Normal",
         "comfortable": "Còmoda"
       },
+      "ui_skin": {
+        "label": "Disposició de la interfície",
+        "description": "On se situen la cerca, la navegació i les barres d'eines",
+        "bulwark": "Predeterminat",
+        "gmail": "Estil Gmail"
+      },
       "animations": {
         "label": "Activa les animacions",
         "description": "Mostra transicions i efectes suaus"
@@ -2288,7 +2294,8 @@
       "next_email": "Correu següent",
       "previous_email": "Correu anterior",
       "open_email": "Obre el correu",
-      "close_email": "Tanca / Desselecciona"
+      "close_email": "Tanca / Desselecciona",
+      "go_to_folder": "Vés a la carpeta"
     },
     "actions": {
       "reply": "Respon",
@@ -2310,7 +2317,8 @@
       "global_search": "Cerca-ho tot"
     },
     "threads": {
-      "expand_collapse": "Desplega/replega el fil"
+      "expand_collapse": "Desplega/replega el fil",
+      "select_gmail_skin": "Selecciona la conversa (skin de Gmail)"
     },
     "composer": {
       "send": "Envia el correu",

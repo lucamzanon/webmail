@@ -901,3 +901,72 @@ option {
 [dir="rtl"] .lucide-panel-right {
   transform: scaleX(-1);
 }
+
+/* ==========================================================================
+   Interface skins
+   --------------------------------------------------------------------------
+   `data-skin` is set on <html> by the settings store (`applyUiSkin`). The
+   default skin declares no overrides, so everything below is additive and can
+   be removed with a single attribute. The Gmail skin copies that client's
+   geometry - bar heights, rail widths, pill shapes, row rhythm - while colour,
+   iconography and type keep coming from the active theme.
+   ========================================================================== */
+
+[data-skin="gmail"] {
+  --skin-topbar-h: 64px;
+  --skin-rail-w: 72px;
+  --skin-nav-row-h: 32px;
+  --skin-nav-radius: 9999px;
+  --skin-compose-h: 56px;
+  --skin-search-h: 48px;
+  --skin-search-radius: 8px;
+}
+
+/* Search: a filled 48px field that lifts onto a card while focused, rather
+   than the outlined input the default skin uses. */
+[data-skin="gmail"] .gm-topbar input[data-search-input] {
+  height: var(--skin-search-h);
+  border-radius: var(--skin-search-radius);
+  border-color: transparent;
+  background-color: var(--color-muted);
+  padding-inline-start: 3rem;
+  font-size: 1rem;
+}
+
+[data-skin="gmail"] .gm-topbar input[data-search-input]:hover {
+  border-color: transparent;
+  background-color: var(--color-accent);
+}
+
+[data-skin="gmail"] .gm-topbar input[data-search-input]:focus-visible {
+  background-color: var(--color-background);
+  border-color: transparent;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.16), 0 4px 8px 3px rgb(0 0 0 / 0.08);
+}
+
+/* The magnifier sits on the field's baseline grid, one 48px hit area in. */
+[data-skin="gmail"] .gm-topbar-search > div > form > svg {
+  inset-inline-start: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+/* Folder rows: 32px pills flush with the rail's leading edge and rounded only
+   on the trailing side, so the selected label reads as one continuous shape
+   with the rail. The default skin's leading accent stripe goes away with it. */
+[data-skin="gmail"] [data-skin-nav-row] {
+  min-height: var(--skin-nav-row-h);
+  margin-inline-end: 12px;
+  padding-inline-end: 16px;
+  border-inline-start-width: 0;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-start-end-radius: var(--skin-nav-radius);
+  border-end-end-radius: var(--skin-nav-radius);
+}
+
+/* Compose: Gmail's 56px pill, which shrinks to a circle with the rail. */
+[data-skin="gmail"] [data-skin-compose] {
+  height: var(--skin-compose-h);
+  border-radius: var(--skin-nav-radius);
+}

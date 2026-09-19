@@ -1018,6 +1018,12 @@
         "regular": "Regulat",
         "comfortable": "Confortabil"
       },
+      "ui_skin": {
+        "label": "Aspectul interfeței",
+        "description": "Unde se află căutarea, navigarea și barele de instrumente",
+        "bulwark": "Implicit",
+        "gmail": "Stil Gmail"
+      },
       "animations": {
         "label": "Activați animațiile",
         "description": "Prezentați tranziții și efecte fluide"
@@ -2288,7 +2294,8 @@
       "next_email": "Următorul e-mail",
       "previous_email": "E-mailul anterior",
       "open_email": "Deschide e-mailul",
-      "close_email": "Închide / Deselectează"
+      "close_email": "Închide / Deselectează",
+      "go_to_folder": "Mergi la dosar"
     },
     "actions": {
       "reply": "Răspunde",
@@ -2310,7 +2317,8 @@
       "global_search": "Caută în tot"
     },
     "threads": {
-      "expand_collapse": "Extindeți/reduceți firul de discuție"
+      "expand_collapse": "Extindeți/reduceți firul de discuție",
+      "select_gmail_skin": "Selectează conversația (aspect Gmail)"
     },
     "composer": {
       "send": "Trimite e-mail",

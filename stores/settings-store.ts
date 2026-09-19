@@ -97,6 +97,13 @@ async function syncSettingsJob(job: SettingsSyncJob, retries = 1): Promise<void>
 
 export type FontSize = 'small' | 'medium' | 'large';
 export type Density = 'extra-compact' | 'compact' | 'regular' | 'comfortable';
+/**
+ * Which interface skin drives the shell's geometry. `bulwark` is the app's own
+ * layout; `gmail` re-arranges the chrome to match the muscle memory of Gmail's
+ * web client (search-first top bar, 256px label rail, pill Compose) without
+ * borrowing its icons, wordmark or palette.
+ */
+export type UiSkin = 'bulwark' | 'gmail';
 /** @deprecated Use Density instead */
 export type ListDensity = Density;
 export type DeleteAction = 'trash' | 'trash-and-read' | 'permanent';
@@ -304,6 +311,7 @@ interface SettingsState {
   // Appearance
   fontSize: FontSize;
   density: Density;
+  uiSkin: UiSkin;
   animationsEnabled: boolean;
   // Message-list ordering (#718): prioritised sort levels mapped onto the JMAP
   // Email/query sort; empty = chronological. Scope: Inbox only or every folder.
@@ -550,6 +558,7 @@ const DEFAULT_SETTINGS = {
   // Appearance
   fontSize: 'medium' as FontSize,
   density: 'regular' as Density,
+  uiSkin: 'bulwark' as UiSkin,
   animationsEnabled: true,
   messageListOrder: [] as SortLevel[],
   messageListOrderScope: 'inbox' as MessageListOrderScope,
@@ -766,6 +775,20 @@ export const useSettingsStore = create<SettingsState>()(
           applyDensity(value as Density);
         }
 
+        // Swap the shell geometry
+        if (key === 'uiSkin') {
+          applyUiSkin(value as UiSkin);
+          // Gmail has no reading pane by default: the list runs full width and
+          // a conversation opens in its place. That is exactly `mailLayout:
+          // 'focus'`, so picking the skin moves the default across. A layout
+          // the user already chose by hand is left alone, and the Layout
+          // setting still offers the split panes (Gmail's own reading-pane
+          // options) afterwards.
+          if (value === 'gmail' && get().mailLayout === 'split') {
+            set({ mailLayout: 'focus' });
+          }
+        }
+
         // Apply animations to document root
         if (key === 'animationsEnabled') {
           applyAnimations(value as boolean);
@@ -776,6 +799,7 @@ export const useSettingsStore = create<SettingsState>()(
         set(DEFAULT_SETTINGS);
         applyFontSize(DEFAULT_SETTINGS.fontSize);
         applyDensity(DEFAULT_SETTINGS.density);
+        applyUiSkin(DEFAULT_SETTINGS.uiSkin);
         applyAnimations(DEFAULT_SETTINGS.animationsEnabled);
       },
 
@@ -785,6 +809,7 @@ export const useSettingsStore = create<SettingsState>()(
         const settings = {
           fontSize: state.fontSize,
           density: state.density,
+          uiSkin: state.uiSkin,
           animationsEnabled: state.animationsEnabled,
           messageListOrder: state.messageListOrder,
           messageListOrderScope: state.messageListOrderScope,
@@ -975,6 +1000,7 @@ export const useSettingsStore = create<SettingsState>()(
           // Apply visual settings
           applyFontSize(get().fontSize);
           applyDensity(get().density);
+          applyUiSkin(get().uiSkin);
           applyAnimations(get().animationsEnabled);
 
           // Apply cross-store settings
@@ -1205,6 +1231,7 @@ export const useSettingsStore = create<SettingsState>()(
             }
             applyFontSize(state.fontSize);
             applyDensity(state.density);
+            applyUiSkin(state.uiSkin);
             applyAnimations(state.animationsEnabled);
           }
         };
@@ -1336,6 +1363,16 @@ function applyDensity(density: Density) {
   for (const [prop, val] of Object.entries(values)) {
     root.style.setProperty(prop, val);
   }
+}
+
+/**
+ * The skin is a single attribute on <html>; every geometry override lives in
+ * the `[data-skin="gmail"]` block in globals.css, so nothing has to re-render
+ * for the shell to change shape.
+ */
+function applyUiSkin(skin: UiSkin) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.dataset.skin = skin;
 }
 
 function applyAnimations(enabled: boolean) {

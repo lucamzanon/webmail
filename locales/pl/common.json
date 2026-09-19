@@ -1015,6 +1015,12 @@
         "regular": "Zwykły",
         "comfortable": "Wygodny"
       },
+      "ui_skin": {
+        "label": "Układ interfejsu",
+        "description": "Gdzie znajdują się wyszukiwarka, nawigacja i paski narzędzi",
+        "bulwark": "Domyślny",
+        "gmail": "Styl Gmaila"
+      },
       "animations": {
         "label": "Włącz animacje",
         "description": "Pokazuj płynne przejścia i efekty"
@@ -2288,7 +2294,8 @@
       "next_email": "Następna wiadomość",
       "previous_email": "Poprzednia wiadomość",
       "open_email": "Otwórz wiadomość",
-      "close_email": "Zamknij / Odznacz"
+      "close_email": "Zamknij / Odznacz",
+      "go_to_folder": "Przejdź do folderu"
     },
     "actions": {
       "reply": "Odpowiedz",
@@ -2310,7 +2317,8 @@
       "global_search": "Szukaj wszędzie"
     },
     "threads": {
-      "expand_collapse": "Rozwiń/zwiń wątek"
+      "expand_collapse": "Rozwiń/zwiń wątek",
+      "select_gmail_skin": "Zaznacz konwersację (skórka Gmaila)"
     },
     "composer": {
       "send": "Wyślij e-mail",

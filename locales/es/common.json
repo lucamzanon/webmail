@@ -1015,6 +1015,12 @@
         "regular": "Normal",
         "comfortable": "Cómodo"
       },
+      "ui_skin": {
+        "label": "Diseño de la interfaz",
+        "description": "Dónde se sitúan la búsqueda, la navegación y las barras de herramientas",
+        "bulwark": "Predeterminado",
+        "gmail": "Estilo Gmail"
+      },
       "animations": {
         "label": "Habilitar Animaciones",
         "description": "Mostrar transiciones y efectos suaves"
@@ -2288,7 +2294,8 @@
       "next_email": "Siguiente correo",
       "previous_email": "Correo anterior",
       "open_email": "Abrir correo",
-      "close_email": "Cerrar / Deseleccionar"
+      "close_email": "Cerrar / Deseleccionar",
+      "go_to_folder": "Ir a la carpeta"
     },
     "actions": {
       "reply": "Responder",
@@ -2310,7 +2317,8 @@
       "global_search": "Buscar en todo"
     },
     "threads": {
-      "expand_collapse": "Expandir/contraer conversación"
+      "expand_collapse": "Expandir/contraer conversación",
+      "select_gmail_skin": "Seleccionar la conversación (skin de Gmail)"
     },
     "composer": {
       "send": "Enviar correo",

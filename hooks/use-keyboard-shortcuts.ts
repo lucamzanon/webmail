@@ -34,10 +34,34 @@ export interface KeyboardShortcutHandlers {
 
   // Thread actions
   onToggleThreadExpansion?: () => void;
+
+  /** Gmail's `x`: put the focused conversation in or out of the selection. */
+  onToggleSelection?: () => void;
+  /** Gmail's `g` sequences: `g` then i / s / t / d / a. */
+  onGoToMailbox?: (target: GoToMailboxTarget) => void;
 }
+
+export type GoToMailboxTarget = 'inbox' | 'starred' | 'sent' | 'drafts' | 'all';
+
+/** The letter each `g` sequence ends on, as Gmail assigns them. */
+const GO_TO_KEYS: Record<string, GoToMailboxTarget> = {
+  i: 'inbox',
+  s: 'starred',
+  t: 'sent',
+  d: 'drafts',
+  a: 'all',
+};
+
+/** How long a pending `g` waits for its second key before lapsing. */
+const GO_TO_SEQUENCE_MS = 1500;
 
 export interface UseKeyboardShortcutsOptions {
   enabled?: boolean;
+  /**
+   * Gmail assigns `x` to selection, not to thread expansion (which its web
+   * client has no equivalent of). The Gmail skin swaps the two.
+   */
+  gmailKeys?: boolean;
   emails: Email[];
   selectedEmailId?: string;
   selectionCount?: number;
@@ -69,12 +93,17 @@ function physicalShortcutKey(event: KeyboardEvent): string {
 
 export function useKeyboardShortcuts({
   enabled = true,
+  gmailKeys = false,
   emails,
   selectedEmailId,
   selectionCount = 0,
   handlers,
 }: UseKeyboardShortcutsOptions) {
   const handlersRef = useRef(handlers);
+  // A `g` waiting for the letter that completes it. Held in a ref so the
+  // listener stays stable; cleared on timeout, on completion, and on any key
+  // that isn't part of a sequence.
+  const pendingGoTo = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Keep handlers ref updated
   useEffect(() => {
@@ -107,6 +136,19 @@ export function useKeyboardShortcuts({
       if (hasModifier) return;
 
       const hasBatchTarget = !!selectedEmailId || selectionCount > 0;
+
+      // Second half of a `g` sequence. Checked before the switch so `s`, `t`,
+      // `a` and `d` reach the folder jump instead of star / reply-all.
+      if (pendingGoTo.current !== null) {
+        clearTimeout(pendingGoTo.current);
+        pendingGoTo.current = null;
+        const target = GO_TO_KEYS[key];
+        if (target && h.onGoToMailbox) {
+          event.preventDefault();
+          h.onGoToMailbox(target);
+          return;
+        }
+      }
 
       switch (key) {
         // Navigation
@@ -226,20 +268,36 @@ export function useKeyboardShortcuts({
           if (event.shiftKey) {
             event.preventDefault();
             h.onRefresh?.();
+          } else if (h.onGoToMailbox) {
+            // Arm the sequence; the next key either completes it or lapses.
+            event.preventDefault();
+            pendingGoTo.current = setTimeout(() => {
+              pendingGoTo.current = null;
+            }, GO_TO_SEQUENCE_MS);
           }
           break;
 
         // Thread actions
         case "x":
-          if (selectedEmailId) {
+          if (gmailKeys) {
+            if (selectedEmailId) {
+              event.preventDefault();
+              h.onToggleSelection?.();
+            }
+          } else if (selectedEmailId) {
             event.preventDefault();
             h.onToggleThreadExpansion?.();
           }
           break;
       }
     },
-    [selectedEmailId, selectionCount]
+    [selectedEmailId, selectionCount, gmailKeys]
   );
+
+  // A pending sequence must not outlive the hook.
+  useEffect(() => () => {
+    if (pendingGoTo.current !== null) clearTimeout(pendingGoTo.current);
+  }, []);
 
   useEffect(() => {
     if (!enabled) return;
@@ -280,6 +338,7 @@ export const KEYBOARD_SHORTCUTS = {
     { key: "k / ↑", description: "shortcuts.navigation.previous_email" },
     { key: "Enter / o", description: "shortcuts.navigation.open_email" },
     { key: "Esc", description: "shortcuts.navigation.close_email" },
+    { key: "g → i / s / t / d / a", description: "shortcuts.navigation.go_to_folder" },
   ],
   actions: [
     { key: "r", description: "shortcuts.actions.reply" },
@@ -302,6 +361,7 @@ export const KEYBOARD_SHORTCUTS = {
   ],
   threads: [
     { key: "x", description: "shortcuts.threads.expand_collapse" },
+    { key: "x", description: "shortcuts.threads.select_gmail_skin" },
   ],
   composer: [
     { key: "Ctrl/Cmd + Enter", description: "shortcuts.composer.send" },

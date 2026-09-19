@@ -1018,6 +1018,12 @@
         "regular": "معمولی",
         "comfortable": "راحت"
       },
+      "ui_skin": {
+        "label": "چیدمان رابط",
+        "description": "جای جست‌وجو، ناوبری و نوارهای ابزار",
+        "bulwark": "پیش‌فرض",
+        "gmail": "سبک Gmail"
+      },
       "animations": {
         "label": "فعال کردن انیمیشن‌ها",
         "description": "نمایش transitions و افکت‌های نرم"
@@ -2288,7 +2294,8 @@
       "next_email": "ایمیل بعدی",
       "previous_email": "ایمیل قبلی",
       "open_email": "باز کردن ایمیل",
-      "close_email": "بستن / لغو انتخاب"
+      "close_email": "بستن / لغو انتخاب",
+      "go_to_folder": "رفتن به پوشه"
     },
     "actions": {
       "reply": "پاسخ",
@@ -2310,7 +2317,8 @@
       "global_search": "جستجو در همه جا"
     },
     "threads": {
-      "expand_collapse": "باز/بسته کردن رشته"
+      "expand_collapse": "باز/بسته کردن رشته",
+      "select_gmail_skin": "انتخاب گفت‌وگو (پوستهٔ Gmail)"
     },
     "composer": {
       "send": "ارسال ایمیل",

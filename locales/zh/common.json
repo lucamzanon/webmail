@@ -1015,6 +1015,12 @@
         "regular": "默认",
         "comfortable": "宽松"
       },
+      "ui_skin": {
+        "label": "界面布局",
+        "description": "搜索、导航和工具栏的位置",
+        "bulwark": "默认",
+        "gmail": "Gmail 风格"
+      },
       "animations": {
         "label": "启用动画",
         "description": "显示平滑的过渡和效果"
@@ -2288,7 +2294,8 @@
       "next_email": "下一封邮件",
       "previous_email": "上一封邮件",
       "open_email": "打开邮件",
-      "close_email": "关闭/取消选择"
+      "close_email": "关闭/取消选择",
+      "go_to_folder": "跳转到文件夹"
     },
     "actions": {
       "reply": "回复",
@@ -2310,7 +2317,8 @@
       "global_search": "全局搜索"
     },
     "threads": {
-      "expand_collapse": "展开/折叠会话"
+      "expand_collapse": "展开/折叠会话",
+      "select_gmail_skin": "选择会话（Gmail 皮肤）"
     },
     "composer": {
       "send": "发送邮件",

@@ -1018,6 +1018,12 @@
         "regular": "Normál",
         "comfortable": "Kényelmes"
       },
+      "ui_skin": {
+        "label": "Felület elrendezése",
+        "description": "Hol helyezkedik el a keresés, a navigáció és az eszköztárak",
+        "bulwark": "Alapértelmezett",
+        "gmail": "Gmail-stílus"
+      },
       "animations": {
         "label": "Animációk engedélyezése",
         "description": "Simább átmenetek és effektek megjelenítése"
@@ -2288,7 +2294,8 @@
       "next_email": "Következő e-mail",
       "previous_email": "Előző e-mail",
       "open_email": "E-mail megnyitása",
-      "close_email": "Bezárás / Kijelölés megszüntetése"
+      "close_email": "Bezárás / Kijelölés megszüntetése",
+      "go_to_folder": "Ugrás mappára"
     },
     "actions": {
       "reply": "Válasz",
@@ -2310,7 +2317,8 @@
       "global_search": "Keresés mindenben"
     },
     "threads": {
-      "expand_collapse": "Beszélgetés kibontása/összecsukása"
+      "expand_collapse": "Beszélgetés kibontása/összecsukása",
+      "select_gmail_skin": "Beszélgetés kijelölése (Gmail-kinézet)"
     },
     "composer": {
       "send": "E-mail küldése",

@@ -31,6 +31,7 @@ import {
   Loader2,
   AlertTriangle,
   NotebookPen,
+  PenSquare,
   CalendarClock,
   BellOff,
   Mails,
@@ -78,6 +79,12 @@ interface SidebarProps {
   onMailboxSelect?: (mailboxId: string) => void;
   onTagSelect?: (keywordId: string | null) => void;
   onCompose?: () => void;
+  /**
+   * Gmail skin, desktop only: the rail grows a Compose pill at the top and
+   * drops its own header, because the global top bar already carries the
+   * collapse control and the account switcher.
+   */
+  gmailShell?: boolean;
   onSidebarClose?: () => void;
   onUnreadFilterClick?: (mailboxId: string) => void;
   onMarkFolderRead?: (mailboxId: string) => void;
@@ -318,6 +325,7 @@ function SidebarRow({
       {...(dropHandlers || {})}
       onContextMenu={onContextMenu}
       data-testid="folder-row"
+      data-skin-nav-row=""
       data-folder-role={testRole ?? undefined}
       data-folder-name={testName ?? undefined}
       data-mailbox-id={testMailboxId ?? undefined}
@@ -809,7 +817,7 @@ export function Sidebar({
   selectedKeyword = null,
   onMailboxSelect,
   onTagSelect,
-  onCompose: _onCompose,
+  onCompose,
   onSidebarClose,
   onUnreadFilterClick,
   onMarkFolderRead,
@@ -837,6 +845,7 @@ export function Sidebar({
   accountMailboxes,
   viewingAccountId = null,
   onAccountMailboxSelect,
+  gmailShell = false,
 }: SidebarProps) {
   const router = useRouter();
   const { sidebarCollapsed: isCollapsed, toggleSidebarCollapsed } = useUIStore();
@@ -1208,7 +1217,7 @@ export function Sidebar({
     >
       {/* Header - hidden in the Pro shell, which owns its own chrome and
           would otherwise render an empty strip (no collapse, no switcher). */}
-      {!isEmbedded && (
+      {!isEmbedded && !gmailShell && (
         // Border lives on the wrapper (outside the h-14 box) so the bar's total
         // height matches the search/reply toolbars, which border-b their wrapper too.
         <div className="border-b border-border">
@@ -1237,6 +1246,26 @@ export function Sidebar({
               <AccountSwitcher variant="expanded" className="flex-1" />
             )}
           </div>
+        </div>
+      )}
+
+      {gmailShell && onCompose && (
+        <div className={cn("pt-2 pb-3", isCollapsed ? "px-2" : "px-3")}>
+          <button
+            type="button"
+            onClick={onCompose}
+            data-skin-compose=""
+            data-tour="compose-button"
+            className={cn(
+              "flex items-center bg-primary text-primary-foreground shadow-sm hover:shadow-md transition-shadow",
+              isCollapsed ? "w-14 justify-center" : "gap-3 ps-4 pe-6"
+            )}
+            title={t("compose_hint")}
+            aria-label={t("compose")}
+          >
+            <PenSquare className="w-5 h-5 flex-shrink-0" />
+            {!isCollapsed && <span className="text-sm font-medium">{t("compose")}</span>}
+          </button>
         </div>
       )}
 

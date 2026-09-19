@@ -2,7 +2,7 @@
 
 import { useTranslations } from 'next-intl';
 import { useThemeStore } from '@/stores/theme-store';
-import { useSettingsStore, type Density } from '@/stores/settings-store';
+import { useSettingsStore, type Density, type UiSkin } from '@/stores/settings-store';
 import { SettingsSection, SettingItem, RadioGroup, ToggleSwitch } from './settings-section';
 import { cn } from '@/lib/utils';
 import { useTour } from '@/components/tour/tour-provider';
@@ -69,7 +69,7 @@ export function AppearanceSettings() {
   const tAdvanced = useTranslations('settings.advanced');
   const tTour = useTranslations('tour');
   const { theme, setTheme } = useThemeStore();
-  const { fontSize, density, animationsEnabled, senderFavicons, showAvatarsInJunk, showOnboardingOnNewDevices, updateSetting } = useSettingsStore();
+  const { fontSize, density, uiSkin, animationsEnabled, senderFavicons, showAvatarsInJunk, showOnboardingOnNewDevices, updateSetting } = useSettingsStore();
   const { startTour, resetTourCompletion } = useTour();
   const { isSettingLocked, isSettingHidden } = usePolicyStore();
 
@@ -116,6 +116,19 @@ export function AppearanceSettings() {
           ]}
         />
         <DensityPreview density={density} />
+      </SettingItem>
+      )}
+
+      {!isSettingHidden('uiSkin') && (
+      <SettingItem label={t('ui_skin.label')} description={t('ui_skin.description')} locked={isSettingLocked('uiSkin')}>
+        <RadioGroup
+          value={uiSkin}
+          onChange={(value) => updateSetting('uiSkin', value as UiSkin)}
+          options={[
+            { value: 'bulwark', label: t('ui_skin.bulwark') },
+            { value: 'gmail', label: t('ui_skin.gmail') },
+          ]}
+        />
       </SettingItem>
       )}
 

@@ -1015,6 +1015,12 @@
         "regular": "보통",
         "comfortable": "넓게"
       },
+      "ui_skin": {
+        "label": "인터페이스 레이아웃",
+        "description": "검색, 탐색, 도구 모음의 위치",
+        "bulwark": "기본",
+        "gmail": "Gmail 스타일"
+      },
       "animations": {
         "label": "애니메이션 켜기",
         "description": "부드러운 전환 효과를 사용해요"
@@ -2288,7 +2294,8 @@
       "next_email": "다음 메일",
       "previous_email": "이전 메일",
       "open_email": "메일 열기",
-      "close_email": "닫기 / 선택 해제"
+      "close_email": "닫기 / 선택 해제",
+      "go_to_folder": "폴더로 이동"
     },
     "actions": {
       "reply": "답장",
@@ -2310,7 +2317,8 @@
       "global_search": "전체 검색"
     },
     "threads": {
-      "expand_collapse": "대화 펼치기/접기"
+      "expand_collapse": "대화 펼치기/접기",
+      "select_gmail_skin": "대화 선택 (Gmail 스킨)"
     },
     "composer": {
       "send": "이메일 보내기",

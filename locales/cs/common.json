@@ -1015,6 +1015,12 @@
         "regular": "Běžná",
         "comfortable": "Pohodlná"
       },
+      "ui_skin": {
+        "label": "Rozvržení rozhraní",
+        "description": "Kde se nachází hledání, navigace a panely nástrojů",
+        "bulwark": "Výchozí",
+        "gmail": "Styl Gmailu"
+      },
       "animations": {
         "label": "Povolit animace",
         "description": "Zobrazovat plynulé přechody a efekty"
@@ -2288,7 +2294,8 @@
       "next_email": "Další zpráva",
       "previous_email": "Předchozí zpráva",
       "open_email": "Otevřít zprávu",
-      "close_email": "Zavřít / Zrušit výběr"
+      "close_email": "Zavřít / Zrušit výběr",
+      "go_to_folder": "Přejít do složky"
     },
     "actions": {
       "reply": "Odpovědět",
@@ -2310,7 +2317,8 @@
       "global_search": "Hledat ve všem"
     },
     "threads": {
-      "expand_collapse": "Rozbalit/sbalit vlákno"
+      "expand_collapse": "Rozbalit/sbalit vlákno",
+      "select_gmail_skin": "Vybrat konverzaci (vzhled Gmailu)"
     },
     "composer": {
       "send": "Odeslat e-mail",
