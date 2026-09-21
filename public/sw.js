@@ -23,6 +23,9 @@ function getBasePath() {
 }
 
 const BASE_PATH = getBasePath();
+// Matches the preview API's own cap. A push carrying more than this is a
+// backlog replay; the extras stay unannounced rather than burying the shade.
+const PREVIEW_ID_LIMIT = 10;
 const MAILTO_CLIENTS = new Map();
 
 self.addEventListener("install", () => {
@@ -86,6 +89,23 @@ self.addEventListener("message", (event) => {
   event.waitUntil(focusExistingWindowClient(event.source && event.source.id));
 });
 
+/**
+ * Closes the one-per-account summary notification, if one is showing.
+ *
+ * Kept tolerant: `getNotifications` is missing on some older service worker
+ * implementations, and nothing here is worth losing a real notification over.
+ */
+async function closeAccountSummary(accountId) {
+  const tag = "bulwark-mail:" + (accountId || "default");
+  try {
+    if (typeof self.registration.getNotifications !== "function") return;
+    const showing = await self.registration.getNotifications({ tag });
+    for (const notification of showing) notification.close();
+  } catch (_) {
+    // Nothing to do: the stale summary simply stays where it is.
+  }
+}
+
 async function handlePush(event) {
   let payload = null;
   try {
@@ -136,7 +156,9 @@ async function handlePush(event) {
   try {
     const query = new URLSearchParams();
     if (accountId) query.set("accountId", accountId);
-    if (freshIds.length > 0) query.set("emailId", freshIds[freshIds.length - 1]);
+    // Every id we have not announced yet - the preview API answers with one
+    // entry per id so each gets its own notification.
+    for (const id of freshIds.slice(-PREVIEW_ID_LIMIT)) query.append("emailId", id);
     const qs = query.toString();
     const previewUrl = `${BASE_PATH}/api/push/preview${qs ? `?${qs}` : ""}`;
     const res = await fetch(previewUrl, {
@@ -155,6 +177,11 @@ async function handlePush(event) {
   const unreadTotal = preview && typeof preview.unreadTotal === "number"
     ? preview.unreadTotal
     : 0;
+  // The relay never echoes accountLabel back in a push (it only uses it for
+  // its own /metrics), so the address comes from the preview API's JMAP
+  // session. It is what makes two addresses on one device distinguishable.
+  const accountName = (preview && preview.account && typeof preview.account.name === "string"
+    && preview.account.name) || accountLabel || "";
 
   // Push subscription is scoped to EmailDelivery, but stragglers from the
   // older broader-types subscription, marking-as-read races and verification
@@ -173,50 +200,88 @@ async function handlePush(event) {
     return;
   }
 
-  // Group per account under one shared tag so a burst of new mail collapses
-  // into a single, self-updating notification instead of one toast per message
-  // (Android renders one notification per unique tag, which is why 50 arrivals
-  // used to stack 50 toasts). The newest message is the headline and a
-  // Gmail-style "+N more" line carries the rest, counted from the account's
-  // unread total.
-  const groupTag = "bulwark-mail:" + (accountId || "default");
-  let title;
-  let body;
-  let data = { kind: "mail-list", accountId };
+  // Gmail-style: one notification per message, not one per account.
+  //
+  // Each message gets its own tag (account + message id), so a burst posts a
+  // stack of separate entries the user can expand, act on and dismiss one by
+  // one - the body carries subject + snippet, which Android renders as
+  // BigText when the entry is expanded. Grouping is per origin and is done by
+  // the platform: the Web Notifications API has no group/summary key, so we
+  // cannot create one Android group per address the way the Gmail app does.
+  // Stamping the address on every notification is the closest the web gets.
+  //
+  // (Before this, all of an account's mail collapsed into a single
+  // self-replacing toast with a "+N more" line, and the older messages were
+  // unreadable.)
+  const messages = (preview && Array.isArray(preview.emails) && preview.emails.length > 0)
+    ? preview.emails.filter((m) => m && typeof m.id === "string")
+    : (email ? [email] : []);
 
-  if (email) {
-    const sender = email.from && email.from[0];
-    const senderName = (sender && sender.name) || (sender && sender.email) || "New mail";
-    title = senderName + (accountLabel ? ` (${accountLabel})` : "");
-    body = email.subject || email.preview || "(no subject)";
-    const more = unreadTotal > 1 ? unreadTotal - 1 : 0;
-    if (more > 0) {
-      // Several unread: this is a group. Keep the newest as the headline, add
-      // the "+N more" count, and open the inbox (not one message) on click.
-      body += "\n" + (more === 1 ? "+1 more message" : `+${more} more messages`);
-    } else {
-      // Exactly one unread: deep-link straight to that message on click.
-      data = { kind: "email", emailId: email.id, threadId: email.threadId };
-    }
-  } else {
-    title = accountLabel ? `New mail (${accountLabel})` : "New mail";
-    body = unreadTotal > 1 ? `${unreadTotal} unread messages` : "You have new mail";
+  if (messages.length === 0) {
+    // Preview failed or returned nothing: one generic toast per account, as
+    // before, so a real delivery is never silently dropped.
+    await self.registration.showNotification(
+      accountName ? `New mail (${accountName})` : "New mail",
+      {
+        body: unreadTotal > 1 ? `${unreadTotal} unread messages` : "You have new mail",
+        tag: "bulwark-mail:" + (accountId || "default"),
+        icon: `${BASE_PATH}/api/pwa-icon/192`,
+        badge: `${BASE_PATH}/api/pwa-icon/192`,
+        data: { kind: "mail-list", accountId },
+        renotify: true,
+      },
+    );
+    await rememberAnnounced(accountId, notified, freshIds, null);
+    return;
   }
 
-  await self.registration.showNotification(title, {
-    body,
-    // Shared per-account tag: each new push replaces the account's single
-    // notification rather than adding another.
-    tag: groupTag,
-    // Branded app icon via the PWA-icon endpoint (admin-configured, else the
-    // built-in default). The static /icon-192x192.png ignored admin branding.
-    icon: `${BASE_PATH}/api/pwa-icon/192`,
-    badge: `${BASE_PATH}/api/pwa-icon/192`,
-    data,
-    renotify: true,
-  });
+  // A collapsed toast for this account - the "+N more" one older builds
+  // posted, or the generic "New mail" a failed preview leaves behind - says
+  // less than what is about to replace it, and carries a different tag, so
+  // nothing would ever take its place: it would sit in the shade for good,
+  // above the real entries. Retire it by hand.
+  await closeAccountSummary(accountId);
 
-  const announced = freshIds.length > 0 ? freshIds : (email ? [email.id] : []);
+  // Oldest first so the newest ends up on top of the shade.
+  for (let i = 0; i < messages.length; i++) {
+    const message = messages[i];
+    const isNewest = i === messages.length - 1;
+    const sender = message.from && message.from[0];
+    const senderName = (sender && sender.name) || (sender && sender.email) || "New mail";
+    const subject = message.subject || "(no subject)";
+    const snippet = (message.preview || "").trim();
+
+    await self.registration.showNotification(
+      accountName ? `${senderName} (${accountName})` : senderName,
+      {
+        // Subject first, snippet under it: collapsed Android shows the first
+        // line, expanding reveals the rest of the message text.
+        body: snippet ? `${subject}\n${snippet}` : subject,
+        tag: `bulwark-mail:${accountId || "default"}:${message.id}`,
+        icon: `${BASE_PATH}/api/pwa-icon/192`,
+        badge: `${BASE_PATH}/api/pwa-icon/192`,
+        timestamp: Date.parse(message.receivedAt || "") || Date.now(),
+        data: {
+          kind: "email",
+          emailId: message.id,
+          threadId: message.threadId,
+          accountId,
+        },
+        // Buzz once for the burst: only the newest arrival alerts, the rest
+        // land quietly beneath it.
+        renotify: isNewest,
+        silent: !isNewest,
+      },
+    );
+  }
+
+  await rememberAnnounced(accountId, notified, freshIds, messages);
+}
+
+// Record which message ids this push announced so a redelivery stays quiet.
+async function rememberAnnounced(accountId, notified, freshIds, messages) {
+  const fromMessages = messages ? messages.map((m) => m.id) : [];
+  const announced = fromMessages.length > 0 ? fromMessages : freshIds;
   if (announced.length > 0) {
     await writeNotifiedIds(accountId, notified.concat(announced));
   }

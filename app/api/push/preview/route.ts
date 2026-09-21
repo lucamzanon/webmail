@@ -13,10 +13,20 @@ import { DisallowedUrlError } from '@/lib/security/url-guard';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+/** Cap on how many messages one push may preview - and so notify about. */
+const MAX_PREVIEW_EMAILS = 10;
+
 interface ResolvedTarget {
   authHeader: string;
   apiUrl: string;
   accountId: string;
+  /**
+   * Human label for the account this preview belongs to - the JMAP session's
+   * account name, which for Stalwart is the address itself. The SW stamps it
+   * on every notification so a burst from two addresses stays legible (the
+   * relay never echoes accountLabel back in a push).
+   */
+  accountName: string;
   /** See StalwartCredentials.trusted - false routes through the guarded fetch. */
   trusted: boolean;
 }
@@ -43,7 +53,7 @@ async function resolveTargetForAccount(accountId: string): Promise<ResolvedTarge
           const session = (await res.json()) as {
             apiUrl?: string;
             primaryAccounts?: Record<string, string>;
-            accounts?: Record<string, unknown>;
+            accounts?: Record<string, { name?: string } | undefined>;
           };
           const mailAccountId = session.primaryAccounts?.['urn:ietf:params:jmap:mail'];
           if (!session.apiUrl || !mailAccountId) return null;
@@ -54,7 +64,13 @@ async function resolveTargetForAccount(accountId: string): Promise<ResolvedTarge
             accountId !== mailAccountId &&
             Object.prototype.hasOwnProperty.call(session.accounts ?? {}, accountId);
           if (mailAccountId !== accountId && !isSharedAccount) return null;
-          return { authHeader: ctx.authHeader, apiUrl: session.apiUrl, accountId, trusted };
+          return {
+            authHeader: ctx.authHeader,
+            apiUrl: session.apiUrl,
+            accountId,
+            accountName: session.accounts?.[accountId]?.name ?? '',
+            trusted,
+          };
         } catch {
           return null;
         }
@@ -73,11 +89,18 @@ async function resolveDefaultTarget(creds: StalwartCredentials): Promise<Resolve
   const session = (await sessionRes.json()) as {
     apiUrl?: string;
     primaryAccounts?: Record<string, string>;
+    accounts?: Record<string, { name?: string } | undefined>;
   };
   const apiUrl = session.apiUrl;
   const accountId = session.primaryAccounts?.['urn:ietf:params:jmap:mail'];
   if (!apiUrl || !accountId) return null;
-  return { authHeader: creds.authHeader, apiUrl, accountId, trusted: creds.trusted };
+  return {
+    authHeader: creds.authHeader,
+    apiUrl,
+    accountId,
+    accountName: session.accounts?.[accountId]?.name ?? '',
+    trusted: creds.trusted,
+  };
 }
 
 /**
@@ -103,7 +126,18 @@ export async function GET(request: NextRequest) {
     // carries the id of the message that was actually delivered, so the SW
     // asks for that one instead of guessing "newest unread in the Inbox" -
     // which is wrong whenever Sieve filed the new message into a folder.
-    const requestedEmailId = request.nextUrl.searchParams.get('emailId');
+    // A single push can carry several delivered ids (a burst, or a retry that
+    // replays ones we never announced). Preview them all so the SW can post
+    // one Gmail-style notification per message instead of a single collapsed
+    // toast. getAll() is guarded because some callers/tests pass a minimal
+    // searchParams stub with only get().
+    const params = request.nextUrl.searchParams;
+    const requestedEmailIds = (typeof params.getAll === 'function'
+      ? params.getAll('emailId')
+      : [params.get('emailId')]
+    ).filter((id): id is string => typeof id === 'string' && id !== '')
+      .slice(-MAX_PREVIEW_EMAILS);
+    const requestedEmailId = requestedEmailIds[requestedEmailIds.length - 1] ?? null;
 
     let target: ResolvedTarget | null = null;
     let authHeader: string;
@@ -125,7 +159,7 @@ export async function GET(request: NextRequest) {
       authHeader = creds.authHeader;
     }
 
-    const { apiUrl, accountId, trusted } = target;
+    const { apiUrl, accountId, accountName, trusted } = target;
 
     const inboxRes = await fetchJmapServer(apiUrl, {
       method: 'POST',
@@ -169,7 +203,9 @@ export async function GET(request: NextRequest) {
     if (!inboxId && !requestedEmailId) {
       return NextResponse.json({
         email: null,
+        emails: [],
         unreadTotal: 0,
+        account: { id: accountId, name: accountName },
       }, {
         headers: {
           'Cache-Control': 'no-store',
@@ -211,10 +247,10 @@ export async function GET(request: NextRequest) {
         ],
       );
     }
-    if (requestedEmailId) {
+    if (requestedEmailIds.length > 0) {
       methodCalls.push([
         'Email/get',
-        { accountId, ids: [requestedEmailId], properties: emailProperties },
+        { accountId, ids: requestedEmailIds, properties: emailProperties },
         'delivered',
       ]);
     }
@@ -261,7 +297,7 @@ export async function GET(request: NextRequest) {
     };
 
     let email: EmailLite | null = null;
-    let delivered: EmailLite | null = null;
+    let deliveredList: EmailLite[] = [];
     let unreadTotal = 0;
     for (const [method, body, callId] of data.methodResponses) {
       if (method === 'Email/query') {
@@ -269,24 +305,36 @@ export async function GET(request: NextRequest) {
       }
       if (method === 'Email/get') {
         const list = (body as { list?: EmailLite[] }).list ?? [];
-        if (callId === 'delivered') delivered = list[0] ?? null;
+        if (callId === 'delivered') deliveredList = list;
         else email = list[0] ?? null;
       }
     }
+    // Oldest first: the SW posts them in order so the newest lands on top of
+    // the notification shade.
+    deliveredList = [...deliveredList].sort((a, b) =>
+      String(a.receivedAt ?? '').localeCompare(String(b.receivedAt ?? '')));
+    const delivered = deliveredList[deliveredList.length - 1] ?? null;
     // The message the server said it delivered beats "newest unread in the
     // Inbox" - it may have been filed elsewhere by Sieve. Keep the Inbox
     // unread total for the group line; count the delivered one if it isn't
     // already in it (unread total is Inbox-scoped).
     if (delivered) {
-      if (!email || email.id !== delivered.id) {
-        unreadTotal = Math.max(unreadTotal, 1);
+      if (!email || !deliveredList.some((d) => d.id === email?.id)) {
+        unreadTotal = Math.max(unreadTotal, deliveredList.length);
       }
       email = delivered;
     }
 
+    // One entry per message to notify about. With server-side delivery ids
+    // that is the delivered burst; without them, the newest unread in the
+    // Inbox, which is all the state-change path can tell us about.
+    const emails = deliveredList.length > 0 ? deliveredList : (email ? [email] : []);
+
     return NextResponse.json({
       email,
+      emails,
       unreadTotal,
+      account: { id: accountId, name: accountName },
     }, {
       headers: {
         // SW already gates on its own logic - don't let push events get

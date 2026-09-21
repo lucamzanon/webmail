@@ -65,10 +65,17 @@ function mockJmap() {
   });
 }
 
-async function callRoute(accountId: string, emailId: string | null = null) {
+async function callRoute(accountId: string, emailId: string | string[] | null = null) {
   const { GET } = await import('@/app/api/push/preview/route');
+  const emailIds = emailId === null ? [] : (Array.isArray(emailId) ? emailId : [emailId]);
   const request = {
-    nextUrl: { searchParams: { get: (k: string) => (k === 'accountId' ? accountId : k === 'emailId' ? emailId : null) } },
+    nextUrl: {
+      searchParams: {
+        get: (k: string) =>
+          (k === 'accountId' ? accountId : k === 'emailId' ? emailIds[emailIds.length - 1] ?? null : null),
+        getAll: (k: string) => (k === 'emailId' ? emailIds : []),
+      },
+    },
   };
   const res = (await GET(request as unknown as Parameters<typeof GET>[0])) as unknown as {
     status: number;
@@ -147,7 +154,10 @@ describe('push preview JMAP failures', () => {
         ['Email/query', { ids: [], total: 0 }, 'eq'],
         ['Email/get', { list: [] }, 'eg'],
       ] }));
-    expect(await callRoute('a')).toEqual({ status: 200, body: { email: null, unreadTotal: 0 } });
+    expect(await callRoute('a')).toEqual({
+      status: 200,
+      body: { email: null, emails: [], unreadTotal: 0, account: { id: 'a', name: 'me@example.com' } },
+    });
   });
 });
 
@@ -162,6 +172,42 @@ it('previews a delivered message outside an empty Inbox', async () => {
       ['Email/get', { list: [{ id: 'filed', threadId: 't2' }] }, 'delivered'],
     ] }));
   expect(await callRoute('a', 'filed')).toEqual({
-    status: 200, body: { email: { id: 'filed', threadId: 't2' }, unreadTotal: 1 },
+    status: 200,
+    body: {
+      email: { id: 'filed', threadId: 't2' },
+      emails: [{ id: 'filed', threadId: 't2' }],
+      unreadTotal: 1,
+      account: { id: 'a', name: 'me@example.com' },
+    },
   });
+});
+
+it('previews every delivered id, oldest first, so each gets its own notification', async () => {
+  fetchJmapServer.mockReset()
+    .mockResolvedValueOnce(jsonResponse(SESSION))
+    .mockResolvedValueOnce(jsonResponse({ methodResponses: [['Mailbox/query', { ids: ['inbox'] }, 'mb']] }))
+    .mockResolvedValueOnce(jsonResponse({ methodResponses: [
+      ['Email/query', { ids: [], total: 0 }, 'eq'],
+      ['Email/get', { list: [] }, 'eg'],
+      ['Email/get', { list: [
+        { id: 'new', threadId: 't2', receivedAt: '2026-09-21T10:00:00Z' },
+        { id: 'old', threadId: 't1', receivedAt: '2026-09-21T09:00:00Z' },
+      ] }, 'delivered'],
+    ] }));
+
+  const { body } = await callRoute('a', ['old', 'new']);
+
+  expect(body.emails).toEqual([
+    { id: 'old', threadId: 't1', receivedAt: '2026-09-21T09:00:00Z' },
+    { id: 'new', threadId: 't2', receivedAt: '2026-09-21T10:00:00Z' },
+  ]);
+  // The headline stays the newest of the burst, and both count as unread.
+  expect(body.email).toMatchObject({ id: 'new' });
+  expect(body.unreadTotal).toBe(2);
+
+  const delivered = fetchJmapServer.mock.calls
+    .map(([, init]) => JSON.parse((init as { body?: string })?.body ?? '{}'))
+    .flatMap((b: { methodCalls?: [string, Record<string, unknown>, string][] }) => b.methodCalls ?? [])
+    .find(([, , callId]) => callId === 'delivered');
+  expect(delivered?.[1].ids).toEqual(['old', 'new']);
 });
