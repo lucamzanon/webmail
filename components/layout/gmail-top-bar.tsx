@@ -48,6 +48,13 @@ interface GmailTopBarProps {
   /** Opens the merged across-accounts inbox from the account popover. */
   onSelectAllInboxes?: () => void;
   allInboxesSelected?: boolean;
+  /**
+   * Receives the node under the search field that the advanced-filter panel is
+   * portalled into. Gmail drops that panel from the field itself; without this
+   * the panel would stay behind in the message-list column, two bars away from
+   * the button that opens it.
+   */
+  onFilterAnchorChange?: (node: HTMLDivElement | null) => void;
 }
 
 /**
@@ -74,6 +81,7 @@ export function GmailTopBar({
   activeAppId,
   onSelectAllInboxes,
   allInboxesSelected = false,
+  onFilterAnchorChange,
 }: GmailTopBarProps) {
   const t = useTranslations("sidebar");
   const tSearch = useTranslations("advanced_search");
@@ -154,7 +162,7 @@ export function GmailTopBar({
       </div>
 
       {/* Search: left-anchored and capped, not centred - Gmail's own behaviour */}
-      <div className="gm-topbar-search flex items-center gap-1 flex-1 min-w-0 max-w-[720px]">
+      <div className="gm-topbar-search relative flex items-center gap-1 flex-1 min-w-0 max-w-[720px]">
         <SearchBox
           value={searchQuery}
           onChange={onSearchQueryChange}
@@ -184,6 +192,14 @@ export function GmailTopBar({
             </span>
           )}
         </button>
+
+        {/* Anchor for the advanced-filter panel: the search field's own box,
+            so the panel is as wide as the field and drops straight from it. */}
+        <div
+          ref={onFilterAnchorChange}
+          data-skin-filter-anchor=""
+          className="absolute start-0 end-14 top-full z-50"
+        />
       </div>
 
       {/* Spacer keeps the right cluster pinned while search stays left */}

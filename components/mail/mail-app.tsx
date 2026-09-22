@@ -68,6 +68,7 @@ import { TotpReauthDialog } from "@/components/totp-reauth-dialog";
 import { DragDropProvider } from "@/contexts/drag-drop-context";
 import { isFilterEmpty, activeFilterCount, DEFAULT_SEARCH_FILTERS } from "@/lib/jmap/search-utils";
 import { SearchBox, type ContactSearchField } from "@/components/search/search-box";
+import { FilterPanelHost } from "@/components/search/filter-panel-host";
 import type { ContactSuggestion } from "@/lib/search-suggestions";
 import type { Attachment } from "@/lib/jmap/types";
 import { useSearchHistoryStore } from "@/stores/search-history-store";
@@ -512,6 +513,10 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
   // unified section does.
   const allInboxesReachable = enableUnifiedMailbox && crossAccountActive;
   const allInboxesSelected = selectedMailbox === UNIFIED_MAILBOX_IDS.inbox;
+
+  // The node the Gmail top bar renders under its search field; the filter
+  // panel is portalled into it so it hangs off the control that opens it.
+  const [filterAnchor, setFilterAnchor] = useState<HTMLDivElement | null>(null);
 
   // Builds the populated UnifiedAccountClient[] used by the unified-view
   // effects and one-shot actions in this page. Reads the settings at call time
@@ -3593,6 +3598,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
               allInboxesReachable ? () => handleMailboxSelect(UNIFIED_MAILBOX_IDS.inbox) : undefined
             }
             allInboxesSelected={allInboxesSelected}
+            onFilterAnchorChange={setFilterAnchor}
           />
         )}
         <div className="flex flex-1 overflow-hidden">
@@ -3902,9 +3908,11 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
               </div>
               )}
 
-              {/* Filter Area */}
+              {/* Filter Area. Under the Gmail skin the button that opens this
+                  lives in the global top bar, so the panel drops from the
+                  search field there rather than from the list header. */}
               {isAdvancedSearchOpen && (
-                <div className="px-3 pb-3 space-y-2.5 animate-in slide-in-from-top-1 fade-in duration-150">
+                <FilterPanelHost anchor={gmailShell ? filterAnchor : null}>
                   {/* Quick toggle filters + clear */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -4067,7 +4075,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                       </div>
                     </div>
                   )}
-                </div>
+                </FilterPanelHost>
               )}
             </div>
             )}
