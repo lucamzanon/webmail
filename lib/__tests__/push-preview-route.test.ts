@@ -182,6 +182,30 @@ it('previews a delivered message outside an empty Inbox', async () => {
   });
 });
 
+it('says nothing about a delivered message it cannot read, rather than naming another', async () => {
+  // The push named a message - deleted since, or filed where this account
+  // cannot see it - and the Inbox happens to hold an older unread one. That
+  // older message is not what arrived: announcing it would be a confident
+  // lie, so the answer carries no message at all and the service worker
+  // falls back to its generic toast.
+  fetchJmapServer.mockReset()
+    .mockResolvedValueOnce(jsonResponse(SESSION))
+    .mockResolvedValueOnce(jsonResponse({ methodResponses: [['Mailbox/query', { ids: ['inbox'] }, 'mb']] }))
+    .mockResolvedValueOnce(jsonResponse({ methodResponses: [
+      ['Email/query', { ids: ['stale'], total: 3 }, 'eq'],
+      ['Email/get', { list: [{ id: 'stale', threadId: 't9' }] }, 'eg'],
+      ['Email/get', { list: [] }, 'delivered'],
+    ] }));
+
+  const { body } = await callRoute('a', 'gone');
+
+  expect(body.email).toBeNull();
+  expect(body.emails).toEqual([]);
+  // The unread count is still true, and it is what keeps the SW from
+  // treating this as "nothing to see" and staying silent.
+  expect(body.unreadTotal).toBe(3);
+});
+
 it('previews every delivered id, oldest first, so each gets its own notification', async () => {
   fetchJmapServer.mockReset()
     .mockResolvedValueOnce(jsonResponse(SESSION))

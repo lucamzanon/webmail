@@ -323,12 +323,23 @@ export async function GET(request: NextRequest) {
         unreadTotal = Math.max(unreadTotal, deliveredList.length);
       }
       email = delivered;
+    } else if (requestedEmailIds.length > 0) {
+      // The server named the message that arrived and we could not read it -
+      // deleted since, or filed somewhere this account cannot see. "Newest
+      // unread in the Inbox" is then an answer to a question nobody asked:
+      // it is some other message, and announcing it would be a lie told
+      // confidently. Say nothing about which message it was and let the SW
+      // fall back to its generic toast, which the real notification retires
+      // as soon as one can be built.
+      email = null;
     }
 
     // One entry per message to notify about. With server-side delivery ids
     // that is the delivered burst; without them, the newest unread in the
     // Inbox, which is all the state-change path can tell us about.
-    const emails = deliveredList.length > 0 ? deliveredList : (email ? [email] : []);
+    const emails = requestedEmailIds.length > 0
+      ? deliveredList
+      : (email ? [email] : []);
 
     return NextResponse.json({
       email,
