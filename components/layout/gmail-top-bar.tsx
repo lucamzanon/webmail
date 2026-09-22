@@ -45,6 +45,9 @@ interface GmailTopBarProps {
   onInlineApp?: (appId: string, url: string, name: string) => void;
   onCloseInlineApp?: () => void;
   activeAppId?: string | null;
+  /** Opens the merged across-accounts inbox from the account popover. */
+  onSelectAllInboxes?: () => void;
+  allInboxesSelected?: boolean;
 }
 
 /**
@@ -69,6 +72,8 @@ export function GmailTopBar({
   onInlineApp,
   onCloseInlineApp,
   activeAppId,
+  onSelectAllInboxes,
+  allInboxesSelected = false,
 }: GmailTopBarProps) {
   const t = useTranslations("sidebar");
   const tSearch = useTranslations("advanced_search");
@@ -300,7 +305,12 @@ export function GmailTopBar({
           )}
         </div>
 
-        <AccountSwitcher variant="header" className="ms-1" />
+        <AccountSwitcher
+          variant="header"
+          className="ms-1"
+          onSelectAllInboxes={onSelectAllInboxes}
+          allInboxesSelected={allInboxesSelected}
+        />
       </div>
     </header>
   );
