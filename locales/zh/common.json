@@ -135,6 +135,8 @@
     "show_all_tags": "显示全部（{count}）",
     "show_fewer_tags": "收起",
     "folders": "文件夹",
+    "show_more": "更多",
+    "show_fewer": "收起",
     "mail": "邮件",
     "nav_label": "导航",
     "add_app": "应用",

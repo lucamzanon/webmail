@@ -135,6 +135,8 @@
     "show_all_tags": "전체 보기({count})",
     "show_fewer_tags": "간략히 보기",
     "folders": "폴더",
+    "show_more": "더보기",
+    "show_fewer": "간략히",
     "mail": "메일",
     "nav_label": "내비게이션",
     "add_app": "앱",

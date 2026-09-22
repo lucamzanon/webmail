@@ -17,6 +17,7 @@ import {
   ChevronsRight,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   Folder,
   FolderOpen,
   User,
@@ -849,11 +850,20 @@ export function Sidebar({
   gmailShell = false,
 }: SidebarProps) {
   const router = useRouter();
-  const { sidebarCollapsed: isCollapsed, toggleSidebarCollapsed } = useUIStore();
+  const { sidebarCollapsed, toggleSidebarCollapsed } = useUIStore();
+  // Gmail's collapsed rail is a peek, not a commitment: putting the pointer on
+  // it slides the full list back out over the message list and takes it away
+  // again on leaving, so a folder two clicks deep costs no clicks at all. It
+  // floats rather than widening the column, or every hover would reflow the
+  // list behind it.
+  const [railHovered, setRailHovered] = useState(false);
+  const hoverExpanded = gmailShell && sidebarCollapsed && railHovered;
+  const isCollapsed = sidebarCollapsed && !hoverExpanded;
   const { primaryIdentity: _primaryIdentity, activeAccountId } = useAuthStore();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set());
   const [showAllTags, setShowAllTags] = useState(false);
+  const [moreExpanded, setMoreExpanded] = useState(false);
   const [foldersExpanded, setFoldersExpanded] = useState(() => {
     try {
       const stored = localStorage.getItem('sidebarFoldersExpanded');
@@ -1005,6 +1015,22 @@ export function Sidebar({
   const mailboxTree = buildMailboxTree(mailboxes);
   const ownTree = mailboxTree.filter(n => !n.id.startsWith('shared-account-') && !isServerScheduledNode(n));
   const sharedAccounts = mailboxTree.filter(n => n.id.startsWith('shared-account-'));
+
+  // Gmail's navigation is one flat list of the few places mail actually goes,
+  // with everything else - the folders you made, the shared ones, the labels -
+  // behind a single "More". Bulwark's "Folders" and "Tags" headings say the
+  // same thing the icons already do, so under the skin the first heading goes
+  // and the rest move below the expander. The collapsed rail is left as it is:
+  // it shows icons only, and hiding half of them behind a word would leave a
+  // control with no room to put it.
+  const gmailFlat = gmailShell && !isCollapsed;
+  const isPrimaryFolder = (node: MailboxNode) =>
+    node.role === 'inbox' || node.role === 'sent' || node.role === 'drafts';
+  const primaryTree = gmailFlat ? ownTree.filter(isPrimaryFolder) : ownTree;
+  const secondaryTree = gmailFlat ? ownTree.filter((node) => !isPrimaryFolder(node)) : [];
+  // Everything under "More" is hidden together, so one flag covers the extra
+  // folders, the shared accounts and the labels.
+  const showSecondary = !gmailFlat || moreExpanded;
 
   // With nesting off every tag is its own root, so the same rows render through
   // one path whether or not the ids describe a hierarchy.
@@ -1208,11 +1234,17 @@ export function Sidebar({
 
   return (
     <div
+      onMouseEnter={gmailShell && sidebarCollapsed ? () => setRailHovered(true) : undefined}
+      onMouseLeave={gmailShell && sidebarCollapsed ? () => setRailHovered(false) : undefined}
+      data-skin-rail-peek={hoverExpanded ? "" : undefined}
       className={cn(
         "relative flex flex-col h-full border-e transition-all duration-300 overflow-hidden account-sidebar",
         "bg-secondary border-border",
         "max-lg:w-full",
         isCollapsed ? "lg:w-12" : "lg:w-full",
+        // Floats out of the rail's own column rather than widening it, so the
+        // message list underneath never moves while the pointer passes over.
+        hoverExpanded && "lg:absolute lg:inset-y-0 lg:start-0 lg:z-40 lg:!w-64 lg:shadow-xl",
         className
       )}
     >
@@ -1388,16 +1420,18 @@ export function Sidebar({
           })
         ) : (
           <div onContextMenu={handleFoldersHeaderContextMenu}>
-            <SidebarSectionHeader
-              label={t("folders")}
-              expanded={foldersExpanded}
-              onToggle={toggleFolders}
-              onSettings={openFolderSettings}
-              settingsTitle={t('settings')}
-              isCollapsed={isCollapsed}
-              first={!showUnified}
-            />
-            {((foldersExpanded && !isCollapsed) || isCollapsed) && (
+            {!gmailFlat && (
+              <SidebarSectionHeader
+                label={t("folders")}
+                expanded={foldersExpanded}
+                onToggle={toggleFolders}
+                onSettings={openFolderSettings}
+                settingsTitle={t('settings')}
+                isCollapsed={isCollapsed}
+                first={!showUnified}
+              />
+            )}
+            {(gmailFlat || (foldersExpanded && !isCollapsed) || isCollapsed) && (
               <>
                 {mailboxes.length === 0 ? (
                   <div className="px-4 py-2 text-sm text-muted-foreground">
@@ -1405,7 +1439,7 @@ export function Sidebar({
                   </div>
                 ) : (
                   <>
-                    {ownTree.map((node) => (
+                    {primaryTree.map((node) => (
                       <Fragment key={node.id}>
                         <MailboxTreeItem
                           node={node}
@@ -1421,7 +1455,34 @@ export function Sidebar({
                         {node.role === 'drafts' && renderScheduledRow('scheduled')}
                       </Fragment>
                     ))}
-                    {!ownTree.some((node) => node.role === 'drafts') && renderScheduledRow('scheduled')}
+                    {!primaryTree.some((node) => node.role === 'drafts') && renderScheduledRow('scheduled')}
+                    {gmailFlat && (
+                      <SidebarRow
+                        icon={moreExpanded
+                          ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                          : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                        label={moreExpanded ? t("show_fewer") : t("show_more")}
+                        testName="skin-more"
+                        depth={0}
+                        isSelected={false}
+                        onClick={() => setMoreExpanded((prev) => !prev)}
+                        isCollapsed={false}
+                      />
+                    )}
+                    {gmailFlat && moreExpanded && secondaryTree.map((node) => (
+                      <MailboxTreeItem
+                        key={node.id}
+                        node={node}
+                        selectedMailbox={selectedKeyword ? "" : selectedMailbox}
+                        expandedFolders={expandedFolders}
+                        onMailboxSelect={onMailboxSelect}
+                        onToggleExpand={handleToggleExpand}
+                        isCollapsed={isCollapsed}
+                        onUnreadFilterClick={onUnreadFilterClick}
+                        colorful={colorfulSidebarIcons}
+                        onContextMenu={handleMailboxContextMenu}
+                      />
+                    ))}
                   </>
                 )}
               </>
@@ -1429,7 +1490,7 @@ export function Sidebar({
           </div>
         )}
 
-        {!useMultiAccount && sharedAccounts.length > 0 && (
+        {!useMultiAccount && showSecondary && sharedAccounts.length > 0 && (
           <div>
             <SidebarSectionHeader
               label={t("shared")}
@@ -1488,7 +1549,7 @@ export function Sidebar({
           </div>
         )}
 
-        {emailKeywords.length > 0 && (
+        {showSecondary && emailKeywords.length > 0 && (
           <div data-tour="keyword-tags">
             <SidebarSectionHeader
               label={t("tags")}

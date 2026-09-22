@@ -135,6 +135,8 @@
     "show_all_tags": "Alles tonen ({count})",
     "show_fewer_tags": "Minder tonen",
     "folders": "Mappen",
+    "show_more": "Meer",
+    "show_fewer": "Minder",
     "mail": "E-mail",
     "nav_label": "Navigatie",
     "add_app": "Apps",

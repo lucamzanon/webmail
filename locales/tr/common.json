@@ -135,6 +135,8 @@
     "show_all_tags": "Tümünü göster ({count})",
     "show_fewer_tags": "Daha az göster",
     "folders": "Klasörler",
+    "show_more": "Diğer",
+    "show_fewer": "Daha az",
     "shared": "Paylaşılan",
     "mail": "Posta",
     "nav_label": "Gezinme",

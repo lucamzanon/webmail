@@ -135,6 +135,8 @@
     "show_all_tags": "Alle anzeigen ({count})",
     "show_fewer_tags": "Weniger anzeigen",
     "folders": "Ordner",
+    "show_more": "Mehr",
+    "show_fewer": "Weniger",
     "mail": "E-Mail",
     "nav_label": "Navigation",
     "add_app": "Apps",

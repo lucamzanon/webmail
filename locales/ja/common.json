@@ -135,6 +135,8 @@
     "show_all_tags": "すべて表示（{count}）",
     "show_fewer_tags": "表示を減らす",
     "folders": "フォルダ",
+    "show_more": "もっと見る",
+    "show_fewer": "折りたたむ",
     "mail": "メール",
     "nav_label": "ナビゲーション",
     "add_app": "アプリ",
