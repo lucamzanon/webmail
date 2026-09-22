@@ -37,6 +37,9 @@ interface GmailListToolbarProps {
   onRefresh: () => void;
   isRefreshing?: boolean;
   onMarkFolderRead?: () => void;
+  onMarkAllFoldersRead?: () => void;
+  /** Only offered where emptying is the usual thing to do: spam and the bin. */
+  onEmptyFolder?: () => void;
   /** Scheduled view: only the per-message scheduling actions make sense. */
   disabled?: boolean;
 }
@@ -87,6 +90,8 @@ export function GmailListToolbar({
   onRefresh,
   isRefreshing = false,
   onMarkFolderRead,
+  onMarkAllFoldersRead,
+  onEmptyFolder,
   disabled = false,
 }: GmailListToolbarProps) {
   const t = useTranslations("email_list");
@@ -381,6 +386,37 @@ export function GmailListToolbar({
             >
               {tFolder("mark_folder_read")}
             </button>
+            {onMarkAllFoldersRead && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onMarkAllFoldersRead();
+                }}
+                className="w-full px-3 py-2 text-start text-sm hover:bg-muted"
+              >
+                {tFolder("mark_all_folders_read")}
+              </button>
+            )}
+            {/* Gmail offers this only where emptying a folder is the usual
+                thing to do - spam and the bin - and so does this menu. */}
+            {onEmptyFolder && (isInJunk || isInTrash) && (
+              <>
+                <div className="my-1 h-px bg-border" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onEmptyFolder();
+                  }}
+                  className="w-full px-3 py-2 text-start text-sm text-destructive hover:bg-muted"
+                >
+                  {tFolder("empty_folder")}
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

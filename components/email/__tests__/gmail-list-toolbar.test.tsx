@@ -107,3 +107,53 @@ describe('GmailListToolbar filing actions', () => {
     expect(screen.queryByLabelText('tag')).toBeNull();
   });
 });
+
+describe('GmailListToolbar overflow menu', () => {
+  beforeEach(() => {
+    useAuthStore.setState({ client: {} as never } as never);
+    useEmailStore.setState({
+      emails: [message('a')],
+      mailboxes,
+      selectedMailbox: 'inbox',
+      selectedEmailKeys: new Set(),
+      isUnifiedView: false,
+      unifiedRole: null,
+    } as never);
+  });
+
+  const open = () => fireEvent.click(screen.getAllByLabelText('mark_folder_read')[0]);
+
+  it('offers marking every folder read, not just this one', () => {
+    render(
+      <GmailListToolbar
+        loadedCount={1}
+        onRefresh={() => {}}
+        onMarkFolderRead={() => {}}
+        onMarkAllFoldersRead={() => {}}
+      />
+    );
+    open();
+
+    expect(screen.getByText('mark_all_folders_read')).toBeInTheDocument();
+  });
+
+  it('withholds emptying the folder outside spam and the bin', () => {
+    render(<GmailListToolbar loadedCount={1} onRefresh={() => {}} onEmptyFolder={() => {}} />);
+    open();
+
+    expect(screen.queryByText('empty_folder')).toBeNull();
+  });
+
+  it('offers it in the bin', () => {
+    useEmailStore.setState({
+      mailboxes: [mailbox('trash', 'Trash', 'trash')],
+      selectedMailbox: 'trash',
+    } as never);
+    const onEmptyFolder = vi.fn();
+    render(<GmailListToolbar loadedCount={1} onRefresh={() => {}} onEmptyFolder={onEmptyFolder} />);
+    open();
+
+    fireEvent.click(screen.getByText('empty_folder'));
+    expect(onEmptyFolder).toHaveBeenCalledOnce();
+  });
+});
