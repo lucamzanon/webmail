@@ -1244,7 +1244,8 @@ export function Sidebar({
         isCollapsed ? "lg:w-12" : "lg:w-full",
         // Floats out of the rail's own column rather than widening it, so the
         // message list underneath never moves while the pointer passes over.
-        hoverExpanded && "lg:absolute lg:inset-y-0 lg:start-0 lg:z-40 lg:!w-64 lg:shadow-xl",
+        // Width comes from --skin-rail-peek-w, keyed on data-skin-rail-peek.
+        hoverExpanded && "lg:absolute lg:inset-y-0 lg:start-0 lg:z-40 lg:shadow-xl",
         className
       )}
     >

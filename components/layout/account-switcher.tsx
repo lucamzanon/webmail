@@ -307,7 +307,9 @@ export function AccountSwitcher({
           style={popoverStyle}
           className={cn(
             "border border-border bg-background text-foreground shadow-lg z-50 overflow-hidden",
-            gmailPopover ? "w-[22rem] rounded-3xl shadow-xl" : "w-72 rounded-lg"
+            // Width and radius come from the skin's own tokens, keyed on the
+            // attribute below; only the elevation differs in markup.
+            gmailPopover ? "shadow-xl" : "w-72 rounded-lg"
           )}
           data-skin-account-popover={gmailPopover ? "" : undefined}
           role="menu"
