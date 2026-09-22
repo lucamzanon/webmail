@@ -25,7 +25,7 @@ const EmailComposer = dynamic(
 import { ProtocolAccountPicker } from "@/components/protocol/protocol-account-picker";
 import { ThreadConversationView } from "@/components/email/thread-conversation-view";
 import { MobileHeader } from "@/components/layout/mobile-header";
-import { ThreadGroup, Email, Mailbox, isUnifiedMailboxId, UNIFIED_MAILBOX_IDS, UNIFIED_ROLE_BY_ID, CROSS_VIEW_BY_ID, isCrossViewId } from "@/lib/jmap/types";
+import { ThreadGroup, Email, Mailbox, isUnifiedMailboxId, UNIFIED_MAILBOX_IDS, UNIFIED_ROLE_BY_ID, CROSS_VIEW_BY_ID, CROSS_VIEW_IDS, isCrossViewId } from "@/lib/jmap/types";
 import { useAccountStore } from "@/stores/account-store";
 import { usePolicyStore } from "@/stores/policy-store";
 import type { UnifiedAccountClient } from "@/lib/unified-mailbox";
@@ -861,13 +861,19 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       if (isScheduledView || !selectedEmail) return;
       toggleEmailSelection(selectedEmail);
     },
-    // Gmail's `g` sequences. Starred is a filter here rather than a folder,
-    // which is what the advanced-search star toggle already drives; All mail
-    // uses the folder the account nominated in Layout settings, falling back
-    // to its Archive.
+    // Gmail's `g` sequences. `g s` goes to the "All starred" view when the user
+    // has one - that is a list you arrive at and leave, which is what the key
+    // means in Gmail. Without it there is no starred destination here, and the
+    // fallback is the advanced-search star toggle: it shows the same messages,
+    // but as a search you then have to clear. All mail uses the folder the
+    // account nominated in Layout settings, falling back to its Archive.
     onGoToMailbox: (target: GoToMailboxTarget) => {
       if (isScheduledView && target !== 'inbox') return;
       if (target === 'starred') {
+        if (showCrossStarred) {
+          void handleMailboxSelect(CROSS_VIEW_IDS.starred);
+          return;
+        }
         setSearchFilters({ ...DEFAULT_SEARCH_FILTERS, isStarred: true });
         void handleAdvancedSearch();
         return;
@@ -902,7 +908,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       }
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [activeEmails, selectedEmail, client, selectedMailbox, isMobile, isTablet, selectedEmailKeys, mailboxes, isScheduledView, gmailShell]);
+  }), [activeEmails, selectedEmail, client, selectedMailbox, isMobile, isTablet, selectedEmailKeys, mailboxes, isScheduledView, gmailShell, showCrossStarred]);
 
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({
