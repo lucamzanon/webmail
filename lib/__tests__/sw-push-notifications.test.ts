@@ -115,6 +115,38 @@ it('retires the account summary a failed preview left in the shade', async () =>
     expect(closed).toEqual(['bulwark-mail:acct']);
   });
 
+it('reads the delivered ids out of a standard EmailPush payload', async () => {
+    // What Stalwart sends (draft-ietf-jmap-emailpush): the messages that
+    // passed the delivery filter, each with the properties we subscribed for.
+    // Before this the SW saw no ids here and fell back to "newest unread in
+    // the Inbox", which is a different message whenever mail is read out of
+    // order - or none at all, and then the user got a bare "New mail".
+    const { push, notifications, fetchMock } = loadWorker(BURST);
+
+    await push({
+      '@type': 'EmailPush',
+      accountId: 'acct',
+      emails: [{ id: 'e1', threadId: 't1' }, { id: 'e2', threadId: 't2' }],
+      state: 'XH99813',
+    });
+
+    const url = new URL(fetchMock.mock.calls[0][0], 'https://mail.example.com');
+    expect(url.searchParams.getAll('emailId')).toEqual(['e1', 'e2']);
+    expect(notifications.map((n) => n.options.tag)).toEqual([
+      'bulwark-mail:acct:e1',
+      'bulwark-mail:acct:e2',
+    ]);
+  });
+
+  it('reads revision 00 of the draft, which named a single email', async () => {
+    const { push, fetchMock } = loadWorker(BURST);
+
+    await push({ '@type': 'EmailDelivery', accountId: 'acct', email: { id: 'e2' } });
+
+    const url = new URL(fetchMock.mock.calls[0][0], 'https://mail.example.com');
+    expect(url.searchParams.getAll('emailId')).toEqual(['e2']);
+  });
+
   it('asks the preview API for every unannounced id', async () => {
     const { push, fetchMock } = loadWorker(BURST);
 

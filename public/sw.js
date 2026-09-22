@@ -118,22 +118,39 @@ async function handlePush(event) {
     ? payload.accountLabel
     : "";
 
-  // Two payload shapes reach us from the relay:
-  //   - "jmap-email-push": the server evaluated our per-account delivery
-  //     filter (draft-ietf-jmap-emailpush) and this is a list of the new
-  //     message ids that passed it - spam filed into Junk never gets here.
+  // Three payload shapes reach us from the relay. Two of them name the
+  // messages that were actually delivered, which is the difference between
+  // "here is your mail" and a guess:
+  //
+  //   - "EmailPush" (draft-ietf-jmap-emailpush, what Stalwart sends): the
+  //     server evaluated our per-account delivery filter and lists the new
+  //     messages under `emails`, each carrying the properties we subscribed
+  //     for. Spam filed into Junk never gets here. Revision 00 of the same
+  //     draft said `@type: "EmailDelivery"` with a single `email`, so that
+  //     spelling is read too.
+  //   - `emailIds`: the same idea from the Gmail bridge, which predates our
+  //     support for the draft's own wording.
   //   - "jmap-state-change" (older servers): a bare EmailDelivery ping wrapped
   //     as { changed: { [accountId]: {...} } }, fired for every ingested
-  //     message including junk. The relay forwards a single account per push,
-  //     so the first key is the one this notification is for.
+  //     message including junk, with nothing to say about which message it
+  //     was. All we can do then is ask for the newest unread in the Inbox.
+  //     The relay forwards a single account per push, so the first key is the
+  //     one this notification is for.
   const changed = payload && payload.changed && typeof payload.changed === "object"
     ? payload.changed
     : null;
   const accountId = (payload && typeof payload.accountId === "string" && payload.accountId)
     || (changed ? Object.keys(changed)[0] || "" : "");
-  const emailIds = payload && Array.isArray(payload.emailIds)
-    ? payload.emailIds.filter((id) => typeof id === "string" && id)
+  const delivered = payload
+    ? [
+        ...(Array.isArray(payload.emails) ? payload.emails : []),
+        ...(payload.email ? [payload.email] : []),
+      ]
     : [];
+  const emailIds = [
+    ...(payload && Array.isArray(payload.emailIds) ? payload.emailIds : []),
+    ...delivered.map((mail) => mail && mail.id),
+  ].filter((id, index, all) => typeof id === "string" && id && all.indexOf(id) === index);
 
   // Never notify twice for the same message. A push can be redelivered (relay
   // retry, browser replay after coming back online) and, on the older
