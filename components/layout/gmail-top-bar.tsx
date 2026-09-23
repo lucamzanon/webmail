@@ -193,12 +193,15 @@ export function GmailTopBar({
           )}
         </button>
 
-        {/* Anchor for the advanced-filter panel: the search field's own box,
-            so the panel is as wide as the field and drops straight from it. */}
+        {/* Anchor for the advanced-filter panel: the search field's own box -
+            the wrapper less the 48px filter button and its 4px gap - so the
+            panel shares the field's leading edge and width. It only marks the
+            spot; the panel itself is drawn at the end of <body>. */}
         <div
           ref={onFilterAnchorChange}
+          aria-hidden
           data-skin-filter-anchor=""
-          className="absolute start-0 end-14 top-full z-50"
+          className="pointer-events-none absolute start-0 end-[52px] top-full h-0"
         />
       </div>
 

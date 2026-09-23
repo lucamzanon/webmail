@@ -1000,13 +1000,11 @@ option {
   border-radius: var(--skin-popover-radius);
 }
 
-/* The advanced filters read as a continuation of the field they drop from, so
-   they carry its radius on the bottom corners and none on the top. */
+/* The advanced filters drop from the search field with a small gap and take
+   its corner, so the two read as one control. Position and width come from
+   the field's own box, measured by FilterPanelHost. */
 [data-skin="gmail"] [data-skin-filter-panel] {
-  border-start-start-radius: 0;
-  border-start-end-radius: 0;
-  border-end-start-radius: var(--skin-search-radius);
-  border-end-end-radius: var(--skin-search-radius);
+  border-radius: var(--skin-search-radius);
 }
 
 /* The collapsed rail's hover peek. Only on desktop: below that breakpoint the
