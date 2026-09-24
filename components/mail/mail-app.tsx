@@ -129,6 +129,30 @@ export interface MailAppProps {
   linkSegments?: string[];
 }
 
+
+/**
+ * The folder list once it has been reloaded after an account switch. Until
+ * then the store holds the previous mailbox's folders, or none, and resolving
+ * a folder link against them reports a folder that is merely not loaded yet
+ * as gone - or, worse, finds the previous mailbox's folder of that name.
+ */
+function freshMailboxes(previous: Mailbox[], timeoutMs = 10_000): Promise<Mailbox[]> {
+  const ready = (mailboxes: Mailbox[]) => mailboxes !== previous && mailboxes.length > 0;
+  const now = useEmailStore.getState().mailboxes;
+  if (ready(now)) return Promise.resolve(now);
+  return new Promise((resolve) => {
+    const finish = (mailboxes: Mailbox[]) => {
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(mailboxes);
+    };
+    const timer = setTimeout(() => finish(useEmailStore.getState().mailboxes), timeoutMs);
+    const unsubscribe = useEmailStore.subscribe((state) => {
+      if (ready(state.mailboxes)) finish(state.mailboxes);
+    });
+  });
+}
+
 export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
   // Static Lite build: the route params are empty, read the link from the URL.
   const linkSegments = useLiteLinkSegments('mail', routeSegments);
@@ -1397,6 +1421,9 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
   // this, the URL is an output of the view (see buildMailUrl), not an input.
   const deepLinkHandledRef = useRef(false);
   const applyMailDeepLink = async (link: MailDeepLink) => {
+    // The folder list before an account switch, if one happened: until the
+    // new mailbox's folders arrive the store still holds these (or nothing).
+    let switchedFrom: Mailbox[] | null = null;
     // A permalink can name the account it belongs to. Ids are only meaningful
     // within their account, so switch first - but only to a login that is
     // actually connected; we can't authenticate on someone's behalf.
@@ -1408,6 +1435,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
         toast.error(t('deep_link.account_unavailable'));
         return;
       }
+      switchedFrom = useEmailStore.getState().mailboxes;
       await switchAccount(link.accountId);
     }
 
@@ -1415,7 +1443,10 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
     if (!activeClient) return;
 
     if (link.kind === 'folder') {
-      const mailboxId = resolveFolderRef(link.ref, useEmailStore.getState().mailboxes);
+      const mailboxes = switchedFrom
+        ? await freshMailboxes(switchedFrom)
+        : useEmailStore.getState().mailboxes;
+      const mailboxId = resolveFolderRef(link.ref, mailboxes);
       if (!mailboxId) {
         toast.error(t('deep_link.folder_not_found'));
         return;
