@@ -17,11 +17,14 @@ vi.mock('@/lib/logger', () => ({
   logger: { warn: vi.fn(), error: vi.fn(), debug: vi.fn(), info: vi.fn() },
 }));
 
-vi.mock('@/lib/account-utils', () => ({ MAX_ACCOUNT_SLOTS: 2 }));
+vi.mock('@/lib/account-utils', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/account-utils')>()),
+  MAX_ACCOUNT_SLOTS: 2,
+}));
 
 vi.mock('@/lib/stalwart/auth-context', () => ({
   readStalwartAuthContextFromStore: (_store: unknown, slot: number) =>
-    slot === 0 ? { serverUrl: 'https://mail.example.com/', authHeader: 'Bearer tok' } : null,
+    slot === 0 ? { serverUrl: 'https://mail.example.com/', username: 'me@example.com', authHeader: 'Bearer tok' } : null,
 }));
 
 vi.mock('@/lib/stalwart/credentials', () => ({
@@ -156,7 +159,7 @@ describe('push preview JMAP failures', () => {
       ] }));
     expect(await callRoute('a')).toEqual({
       status: 200,
-      body: { email: null, emails: [], unreadTotal: 0, account: { id: 'a', name: 'me@example.com' } },
+      body: { email: null, emails: [], unreadTotal: 0, account: { id: 'a', name: 'me@example.com', loginId: 'me@example.com@mail.example.com' } },
     });
   });
 });
@@ -177,7 +180,7 @@ it('previews a delivered message outside an empty Inbox', async () => {
       email: { id: 'filed', threadId: 't2' },
       emails: [{ id: 'filed', threadId: 't2' }],
       unreadTotal: 1,
-      account: { id: 'a', name: 'me@example.com' },
+      account: { id: 'a', name: 'me@example.com', loginId: 'me@example.com@mail.example.com' },
     },
   });
 });

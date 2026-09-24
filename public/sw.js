@@ -89,23 +89,6 @@ self.addEventListener("message", (event) => {
   event.waitUntil(focusExistingWindowClient(event.source && event.source.id));
 });
 
-/**
- * Closes the one-per-account summary notification, if one is showing.
- *
- * Kept tolerant: `getNotifications` is missing on some older service worker
- * implementations, and nothing here is worth losing a real notification over.
- */
-async function closeAccountSummary(accountId) {
-  const tag = "bulwark-mail:" + (accountId || "default");
-  try {
-    if (typeof self.registration.getNotifications !== "function") return;
-    const showing = await self.registration.getNotifications({ tag });
-    for (const notification of showing) notification.close();
-  } catch (_) {
-    // Nothing to do: the stale summary simply stays where it is.
-  }
-}
-
 async function handlePush(event) {
   let payload = null;
   try {
@@ -217,82 +200,171 @@ async function handlePush(event) {
     return;
   }
 
-  // Gmail-style: one notification per message, not one per account.
-  //
-  // Each message gets its own tag (account + message id), so a burst posts a
-  // stack of separate entries the user can expand, act on and dismiss one by
-  // one - the body carries subject + snippet, which Android renders as
-  // BigText when the entry is expanded. Grouping is per origin and is done by
-  // the platform: the Web Notifications API has no group/summary key, so we
-  // cannot create one Android group per address the way the Gmail app does.
-  // Stamping the address on every notification is the closest the web gets.
-  //
-  // (Before this, all of an account's mail collapsed into a single
-  // self-replacing toast with a "+N more" line, and the older messages were
-  // unreadable.)
-  const messages = (preview && Array.isArray(preview.emails) && preview.emails.length > 0)
+  // The browser's own name for this login, which is what a deep link's
+  // `?account=` expects - the JMAP account id means nothing to the switcher.
+  const loginId = (preview && preview.account && typeof preview.account.loginId === "string"
+    && preview.account.loginId) || "";
+
+  // What this push adds, newest last as the preview API returns it.
+  const arrived = (preview && Array.isArray(preview.emails) && preview.emails.length > 0)
     ? preview.emails.filter((m) => m && typeof m.id === "string")
     : (email ? [email] : []);
 
-  if (messages.length === 0) {
-    // Preview failed or returned nothing: one generic toast per account, as
-    // before, so a real delivery is never silently dropped.
-    await self.registration.showNotification(
-      accountName ? `New mail (${accountName})` : "New mail",
-      {
-        body: unreadTotal > 1 ? `${unreadTotal} unread messages` : "You have new mail",
-        tag: "bulwark-mail:" + (accountId || "default"),
-        icon: `${BASE_PATH}/api/pwa-icon/192`,
-        badge: `${BASE_PATH}/api/pwa-icon/192`,
-        data: { kind: "mail-list", accountId },
-        renotify: true,
-      },
-    );
+  // One notification per address, the way Gmail groups them: every new mail
+  // for an address goes *into* that address's notification instead of
+  // standing beside it. The first mail reads like a message - sender, subject,
+  // the start of the text on expanding; from the second on the same entry
+  // becomes "N new messages (address)" with one line per mail. Addresses stay
+  // apart from one another, and the mail already listed is carried over from
+  // the notification that is showing, so nothing a previous push announced is
+  // lost when the next one lands.
+  //
+  // The Web Notifications API has no group/summary key, so this is as close
+  // to the Gmail app's native groups as a web app gets: one entry per
+  // address, replaced in place (same tag), rather than an Android group with
+  // one child per message.
+  const listed = await takeListedEntries(accountId);
+
+  if (arrived.length === 0) {
+    // The preview failed or named nothing. A real delivery is never dropped:
+    // if the address already has mail listed, keep the list and say more came
+    // in; otherwise a generic toast, which the next real one replaces.
+    await postAccountNotification(accountId, accountName, loginId, listed, {
+      unknownArrival: true,
+      unreadTotal,
+    });
     await rememberAnnounced(accountId, notified, freshIds, null);
     return;
   }
 
-  // A collapsed toast for this account - the "+N more" one older builds
-  // posted, or the generic "New mail" a failed preview leaves behind - says
-  // less than what is about to replace it, and carries a different tag, so
-  // nothing would ever take its place: it would sit in the shade for good,
-  // above the real entries. Retire it by hand.
-  await closeAccountSummary(accountId);
+  await postAccountNotification(
+    accountId,
+    accountName,
+    loginId,
+    mergeEntries(listed, arrived.map(entryFromPreview)),
+    {},
+  );
+  await rememberAnnounced(accountId, notified, freshIds, arrived);
+}
 
-  // Oldest first so the newest ends up on top of the shade.
-  for (let i = 0; i < messages.length; i++) {
-    const message = messages[i];
-    const isNewest = i === messages.length - 1;
-    const sender = message.from && message.from[0];
-    const senderName = (sender && sender.name) || (sender && sender.email) || "New mail";
-    const subject = message.subject || "(no subject)";
-    const snippet = (message.preview || "").trim();
+const MAX_LISTED_ENTRIES = 20;
+const MAX_BODY_LINES = 6;
 
-    await self.registration.showNotification(
-      accountName ? `${senderName} (${accountName})` : senderName,
-      {
-        // Subject first, snippet under it: collapsed Android shows the first
-        // line, expanding reveals the rest of the message text.
-        body: snippet ? `${subject}\n${snippet}` : subject,
-        tag: `bulwark-mail:${accountId || "default"}:${message.id}`,
-        icon: `${BASE_PATH}/api/pwa-icon/192`,
-        badge: `${BASE_PATH}/api/pwa-icon/192`,
-        timestamp: Date.parse(message.receivedAt || "") || Date.now(),
-        data: {
-          kind: "email",
-          emailId: message.id,
-          threadId: message.threadId,
-          accountId,
-        },
-        // Buzz once for the burst: only the newest arrival alerts, the rest
-        // land quietly beneath it.
-        renotify: isNewest,
-        silent: !isNewest,
-      },
-    );
+function accountTag(accountId) {
+  return "bulwark-mail:" + (accountId || "default");
+}
+
+function entryFromPreview(message) {
+  const sender = message.from && message.from[0];
+  return {
+    id: message.id,
+    threadId: message.threadId || null,
+    sender: (sender && sender.name) || (sender && sender.email) || "",
+    subject: message.subject || "",
+    snippet: (message.preview || "").trim(),
+    receivedAt: message.receivedAt || new Date().toISOString(),
+  };
+}
+
+/**
+ * The mail this address's notification already lists, read back so the next
+ * push can add to it rather than replace it.
+ *
+ * Notifications from the build before this one were one per message
+ * (`bulwark-mail:<account>:<email>`); they are folded in here and closed, so
+ * the shade converges on one entry per address after the update instead of
+ * keeping the old stack alongside the new one.
+ */
+async function takeListedEntries(accountId) {
+  if (typeof self.registration.getNotifications !== "function") return [];
+  const tag = accountTag(accountId);
+  let showing = [];
+  try {
+    showing = await self.registration.getNotifications();
+  } catch (_) {
+    return [];
+  }
+  const entries = [];
+  for (const notification of showing) {
+    const data = notification.data || {};
+    if (notification.tag === tag) {
+      if (Array.isArray(data.entries)) entries.push(...data.entries);
+    } else if (notification.tag.startsWith(tag + ":")) {
+      const [subject, ...rest] = String(notification.body || "").split("\n");
+      entries.push({
+        id: data.emailId || notification.tag.slice(tag.length + 1),
+        threadId: data.threadId || null,
+        sender: String(notification.title || "").replace(/ \([^()]*\)$/, ""),
+        subject: subject || "",
+        snippet: rest.join(" ").trim(),
+        receivedAt: new Date(notification.timestamp || Date.now()).toISOString(),
+      });
+      notification.close();
+    }
+  }
+  return entries.filter((entry) => entry && typeof entry.id === "string");
+}
+
+/** Newest first, one entry per message, bounded so the notification's data stays small. */
+function mergeEntries(listed, arrived) {
+  const byId = new Map();
+  for (const entry of [...listed, ...arrived]) byId.set(entry.id, entry);
+  return [...byId.values()]
+    .sort((a, b) => (Date.parse(b.receivedAt) || 0) - (Date.parse(a.receivedAt) || 0))
+    .slice(0, MAX_LISTED_ENTRIES);
+}
+
+async function postAccountNotification(accountId, accountName, loginId, entries, options) {
+  const withAddress = (text) => (accountName ? `${text} (${accountName})` : text);
+  const newest = entries[0];
+  let title;
+  let body;
+  let data;
+
+  if (entries.length === 0) {
+    title = withAddress("New mail");
+    body = options.unreadTotal > 1 ? `${options.unreadTotal} unread messages` : "You have new mail";
+    data = { kind: "mail-list", accountId, loginId, entries: [] };
+  } else if (entries.length === 1 && !options.unknownArrival) {
+    // A single mail reads like the message itself: subject on the first line,
+    // the start of the text under it (Android shows it on expanding), and a
+    // tap opens that message.
+    title = withAddress(newest.sender || "New mail");
+    body = newest.snippet
+      ? `${newest.subject || "(no subject)"}\n${newest.snippet}`
+      : newest.subject || "(no subject)";
+    data = {
+      kind: "email",
+      emailId: newest.id,
+      threadId: newest.threadId,
+      accountId,
+      loginId,
+      entries,
+    };
+  } else {
+    // Several: one line per mail, newest on top - collapsed, Android shows the
+    // newest; expanded, the list. A tap opens this address's inbox.
+    const lines = entries.slice(0, MAX_BODY_LINES).map((entry) =>
+      `${entry.sender || "New mail"}: ${entry.subject || "(no subject)"}`);
+    if (entries.length > MAX_BODY_LINES) lines.push(`+${entries.length - MAX_BODY_LINES} more`);
+    if (options.unknownArrival) lines.unshift("New mail");
+    const count = entries.length + (options.unknownArrival ? 1 : 0);
+    title = withAddress(`${count} new messages`);
+    body = lines.join("\n");
+    data = { kind: "mail-list", accountId, loginId, entries };
   }
 
-  await rememberAnnounced(accountId, notified, freshIds, messages);
+  await self.registration.showNotification(title, {
+    body,
+    tag: accountTag(accountId),
+    icon: `${BASE_PATH}/api/pwa-icon/192`,
+    badge: `${BASE_PATH}/api/pwa-icon/192`,
+    timestamp: (newest && Date.parse(newest.receivedAt)) || Date.now(),
+    data,
+    // Same tag, so this replaces the address's entry; renotify makes the
+    // replacement alert as a new arrival rather than update silently.
+    renotify: true,
+  });
 }
 
 // Record which message ids this push announced so a redelivery stays quiet.
@@ -540,10 +612,17 @@ function getReusableClientScore(state) {
 
 function buildClickUrl(data) {
   if (!data) return `${BASE_PATH}/`;
+  // `?account=` switches to the mailbox the notification is about first:
+  // with several logins, the active one is often not it.
+  const account = data.loginId ? `?account=${encodeURIComponent(data.loginId)}` : "";
   if (data.kind === "email" && data.emailId) {
     // Permalink (#733). Under NEXT_PUBLIC_LOCALE_PREFIX=always the proxy
     // redirects this to the localised path; the worker has no locale to add.
-    return `${BASE_PATH}/mail/message/${encodeURIComponent(data.emailId)}`;
+    return `${BASE_PATH}/mail/message/${encodeURIComponent(data.emailId)}${account}`;
+  }
+  if (data.kind === "mail-list" && data.loginId) {
+    // Several mails for one address: its inbox, like tapping a Gmail group.
+    return `${BASE_PATH}/mail/folder/inbox${account}`;
   }
   // Generic "New mail" toast (preview API failed or returned no email): land
   // the user on the latest unread message in their Inbox rather than just the

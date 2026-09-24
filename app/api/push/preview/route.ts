@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
-import { MAX_ACCOUNT_SLOTS } from '@/lib/account-utils';
+import { MAX_ACCOUNT_SLOTS, generateAccountId } from '@/lib/account-utils';
 import { readStalwartAuthContextFromStore } from '@/lib/stalwart/auth-context';
 import {
   getStalwartCredentials,
@@ -27,6 +27,14 @@ interface ResolvedTarget {
    * relay never echoes accountLabel back in a push).
    */
   accountName: string;
+  /**
+   * The id this browser knows the login by (`generateAccountId` of the login
+   * username and server): what `?account=` in a deep link expects. The JMAP
+   * account id means nothing to the account switcher, so without this a
+   * notification for a mailbox that isn't the active one opened its message
+   * in whichever mailbox happened to be active.
+   */
+  loginId: string;
   /** See StalwartCredentials.trusted - false routes through the guarded fetch. */
   trusted: boolean;
 }
@@ -69,6 +77,7 @@ async function resolveTargetForAccount(accountId: string): Promise<ResolvedTarge
             apiUrl: session.apiUrl,
             accountId,
             accountName: session.accounts?.[accountId]?.name ?? '',
+            loginId: ctx.username ? generateAccountId(ctx.username, serverUrl) : '',
             trusted,
           };
         } catch {
@@ -99,6 +108,7 @@ async function resolveDefaultTarget(creds: StalwartCredentials): Promise<Resolve
     apiUrl,
     accountId,
     accountName: session.accounts?.[accountId]?.name ?? '',
+    loginId: creds.username ? generateAccountId(creds.username, creds.serverUrl) : '',
     trusted: creds.trusted,
   };
 }
@@ -159,7 +169,7 @@ export async function GET(request: NextRequest) {
       authHeader = creds.authHeader;
     }
 
-    const { apiUrl, accountId, accountName, trusted } = target;
+    const { apiUrl, accountId, accountName, loginId, trusted } = target;
 
     const inboxRes = await fetchJmapServer(apiUrl, {
       method: 'POST',
@@ -205,7 +215,7 @@ export async function GET(request: NextRequest) {
         email: null,
         emails: [],
         unreadTotal: 0,
-        account: { id: accountId, name: accountName },
+        account: { id: accountId, name: accountName, loginId },
       }, {
         headers: {
           'Cache-Control': 'no-store',
@@ -345,7 +355,7 @@ export async function GET(request: NextRequest) {
       email,
       emails,
       unreadTotal,
-      account: { id: accountId, name: accountName },
+      account: { id: accountId, name: accountName, loginId },
     }, {
       headers: {
         // SW already gates on its own logic - don't let push events get
