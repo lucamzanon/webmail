@@ -26,7 +26,7 @@ import { ProtocolAccountPicker } from "@/components/protocol/protocol-account-pi
 import { ThreadConversationView } from "@/components/email/thread-conversation-view";
 import { MobileHeader } from "@/components/layout/mobile-header";
 import { ThreadGroup, Email, Mailbox, isUnifiedMailboxId, UNIFIED_ROLE_BY_ID, CROSS_VIEW_BY_ID, isCrossViewId } from "@/lib/jmap/types";
-import { useAccountStore } from "@/stores/account-store";
+import { useAccountStore, waitForConnectedAccount } from "@/stores/account-store";
 import { usePolicyStore } from "@/stores/policy-store";
 import type { UnifiedAccountClient } from "@/lib/unified-mailbox";
 import { connectedAccountsGrew } from "@/lib/unified-mailbox";
@@ -1401,10 +1401,10 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
     // within their account, so switch first - but only to a login that is
     // actually connected; we can't authenticate on someone's behalf.
     if (link.accountId && link.accountId !== useAuthStore.getState().activeAccountId) {
-      const target = useAccountStore.getState().accounts.find(
-        (a) => a.id === link.accountId && a.isConnected,
-      );
-      if (!target) {
+      // The login may still be reconnecting - a tapped notification reopens
+      // the app and the logins come back one at a time - so wait for it
+      // rather than calling a late mailbox unavailable.
+      if (!(await waitForConnectedAccount(link.accountId))) {
         toast.error(t('deep_link.account_unavailable'));
         return;
       }
