@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { logger } from '@/lib/logger';
+import { cleanPreview } from '@/lib/utils';
 import { MAX_ACCOUNT_SLOTS, generateAccountId } from '@/lib/account-utils';
 import { readStalwartAuthContextFromStore } from '@/lib/stalwart/auth-context';
 import {
@@ -351,11 +352,17 @@ export async function GET(request: NextRequest) {
       email = null;
     }
 
+    // Some servers build the preview from HTML without skipping <style>; a
+    // notification that opens on a style sheet says nothing.
+    const withCleanPreview = <T extends { preview?: string | null }>(e: T): T =>
+      (e.preview ? { ...e, preview: cleanPreview(e.preview) } : e);
+    if (email) email = withCleanPreview(email);
+
     // One entry per message to notify about. With server-side delivery ids
     // that is the delivered burst; without them, the newest unread in the
     // Inbox, which is all the state-change path can tell us about.
     const emails = requestedEmailIds.length > 0
-      ? deliveredList
+      ? deliveredList.map(withCleanPreview)
       : (email ? [email] : []);
 
     return NextResponse.json({

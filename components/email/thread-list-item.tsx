@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback } from "react";
-import { formatDate, formatDateTime, stripInvisibleLeading } from "@/lib/utils";
+import { cleanPreview, formatDate, formatDateTime } from "@/lib/utils";
 import { Email, ThreadGroup } from "@/lib/jmap/types";
 import { cn } from "@/lib/utils";
 import { ListAttachmentChips } from "./attachment-chips";
@@ -316,7 +316,7 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
     // shaped that way, so the two conditions travel together.
     const gmailRow = uiSkin === 'gmail' && isFocusedMailLayout;
     const gmailMobileRow = uiSkin === 'gmail' && isMobile;
-    const trimmedPreview = stripInvisibleLeading(email.preview ?? '');
+    const trimmedPreview = cleanPreview(email.preview);
     const inlinePreview = showPreview && trimmedPreview ? ` ${trimmedPreview}` : '';
     // Search hits carry server snippets with the matched terms marked; they
     // replace the plain subject / preview so the user sees why a mail matched.
@@ -806,7 +806,7 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
     // shaped that way, so the two conditions travel together.
     const gmailRow = uiSkin === 'gmail' && isFocusedMailLayout;
     const gmailMobileRow = uiSkin === 'gmail' && isMobile;
-    const trimmedPreview = stripInvisibleLeading(latestEmail.preview ?? '');
+    const trimmedPreview = cleanPreview(latestEmail.preview);
     const inlinePreview = showPreview && trimmedPreview ? ` ${trimmedPreview}` : '';
     // In a search the matched mail need not be the thread's latest one: show
     // the snippet of whichever email in the thread carries one.
