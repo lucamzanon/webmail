@@ -8,6 +8,8 @@ export interface JmapServerOAuthConfig {
   clientId?: string;
   issuerUrl?: string;
   clientSecret?: string;
+  /** Text of this server's sign-in button, e.g. "Sign in with Google"; the generic SSO label otherwise. */
+  buttonLabel?: string;
 }
 
 export interface JmapServerEntry {
@@ -29,6 +31,7 @@ export interface PublicJmapServerEntry {
   oauth?: {
     clientId?: string;
     issuerUrl?: string;
+    buttonLabel?: string;
   };
 }
 
@@ -84,11 +87,13 @@ export function parseJmapServers(raw: unknown): JmapServerEntry[] {
       const clientId = typeof o.clientId === 'string' ? o.clientId.trim() : '';
       const issuerUrl = typeof o.issuerUrl === 'string' ? trimUrl(o.issuerUrl) : '';
       const clientSecret = typeof o.clientSecret === 'string' ? o.clientSecret : '';
+      const buttonLabel = typeof o.buttonLabel === 'string' ? o.buttonLabel.trim().slice(0, 64) : '';
       if (clientId || issuerUrl || clientSecret) {
         oauth = {};
         if (clientId) oauth.clientId = clientId;
         if (issuerUrl && isHttpUrl(issuerUrl)) oauth.issuerUrl = issuerUrl;
         if (clientSecret) oauth.clientSecret = clientSecret;
+        if (buttonLabel) oauth.buttonLabel = buttonLabel;
       }
     }
     out.push({
@@ -116,6 +121,7 @@ export function redactJmapServers(servers: JmapServerEntry[]): PublicJmapServerE
           oauth: {
             ...(s.oauth.clientId ? { clientId: s.oauth.clientId } : {}),
             ...(s.oauth.issuerUrl ? { issuerUrl: s.oauth.issuerUrl } : {}),
+            ...(s.oauth.buttonLabel ? { buttonLabel: s.oauth.buttonLabel } : {}),
           },
         }
       : {}),

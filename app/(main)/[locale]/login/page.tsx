@@ -187,6 +187,9 @@ function LoginPageContent() {
   const effectiveOauthIssuerUrl = selectedServer
     ? selectedServer.oauth?.issuerUrl || selectedServer.url
     : globalOauthIssuerUrl;
+  // A server entry that names its own OAuth client signs in with OAuth even
+  // while OAuth is off globally: a Gmail bridge next to a password server.
+  const serverOauthEnabled = oauthEnabled || !!selectedServer?.oauth?.clientId;
   const [totpCode, setTotpCode] = useState("");
   const [showTotpField, setShowTotpField] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -417,7 +420,7 @@ function LoginPageContent() {
   }, [serverUrl]);
 
   useEffect(() => {
-    if (!oauthEnabled || !serverUrl) return;
+    if (!serverOauthEnabled || !serverUrl) return;
     setOauthDiscoveryDone(false);
     setOauthMetadata(null);
     const controller = new AbortController();
@@ -440,7 +443,7 @@ function LoginPageContent() {
         setOauthDiscoveryDone(true);
       });
     return () => controller.abort();
-  }, [oauthEnabled, serverUrl, effectiveOauthIssuerUrl, selectedServer?.id]);
+  }, [serverOauthEnabled, serverUrl, effectiveOauthIssuerUrl, selectedServer?.id]);
 
   // Auto-SSO: when enabled with OAUTH_ONLY, skip the login page entirely
   const ssoError = searchParams.get("sso_error");
@@ -1471,12 +1474,12 @@ function LoginPageContent() {
                       ) : (
                         <LogIn className="w-4 h-4 me-2" />
                       )}
-                      {t("sign_in_sso")}
+                      {selectedServer?.oauth?.buttonLabel || t("sign_in_sso")}
                     </Button>
                   </>
                 )}
 
-                {((oauthEnabled && oauthDiscoveryDone && !oauthMetadata) || liteOAuthFailed) && (
+                {((serverOauthEnabled && oauthDiscoveryDone && !oauthMetadata) || liteOAuthFailed) && (
                   <div className="mt-2 p-3 rounded-xl border border-warning/20 bg-warning/5 flex items-start gap-3">
                     <div className="w-10 h-10 rounded-full bg-warning/15 text-warning flex items-center justify-center flex-shrink-0 shadow-sm">
                       <AlertCircle className="w-5 h-5" />
