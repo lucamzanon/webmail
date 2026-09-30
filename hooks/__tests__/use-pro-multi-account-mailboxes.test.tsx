@@ -71,6 +71,18 @@ describe('useProMultiAccountMailboxes', () => {
     expect(client('b').getMailboxes).toHaveBeenCalledTimes(2);
   });
 
+  it('tries a login again when its first folder load failed', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    connected(['a', 'b']);
+    client('b').getMailboxes.mockRejectedValueOnce(new Error('offline'));
+    renderHook(() => useProMultiAccountMailboxes());
+    await waitFor(() => expect(client('b').getMailboxes).toHaveBeenCalledTimes(1));
+    await act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+    act(() => connected(['a', 'b', 'c']));
+    await waitFor(() => expect(useEmailStore.getState().accountMailboxes.b).toBeDefined());
+    expect(client('b').getMailboxes).toHaveBeenCalledTimes(2);
+  });
+
   it('stays idle outside the skin with a single account', () => {
     connected(['a']);
     renderHook(() => useProMultiAccountMailboxes());

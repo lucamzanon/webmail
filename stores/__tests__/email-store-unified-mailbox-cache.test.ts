@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildUnifiedAccountClients, invalidateUnifiedMailboxes, useEmailStore } from '../email-store';
+import { buildUnifiedAccountClients, invalidateUnifiedMailboxes, loadAccountMailboxes, useEmailStore } from '../email-store';
 import { useAccountStore } from '../account-store';
 import { useAuthStore } from '../auth-store';
 import type { IJMAPClient } from '@/lib/jmap/client-interface';
@@ -107,6 +107,16 @@ describe('unified scope folder lists', () => {
     // ...and a later build from the cache must not bring the old 5 back.
     await buildUnifiedAccountClients();
     expect(useEmailStore.getState().accountMailboxes.a[0].unreadEmails).toBe(4);
+  });
+
+  it('publishes a list the Pro shell loaded under the JMAP id too', async () => {
+    const b = fakeClient('b');
+    connect({ b });
+    await loadAccountMailboxes(b as unknown as IJMAPClient, 'b');
+    await buildUnifiedAccountClients();
+    expect(b.getMailboxes).toHaveBeenCalledTimes(1);
+    // Actions on b's mail resolve its folders by JMAP id.
+    expect(useEmailStore.getState().accountMailboxes['jmap-b']?.[0].id).toBe('b-inbox');
   });
 
   it('retries a login whose fetch failed', async () => {

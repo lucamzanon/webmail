@@ -1057,15 +1057,17 @@ async function unifiedMailboxesFor(
  * the unified scope uses, so the two never fetch the same list twice and a
  * list already there is not fetched again until that login reports a change.
  */
-export async function loadAccountMailboxes(client: IJMAPClient, accountId: string): Promise<void> {
+export async function loadAccountMailboxes(client: IJMAPClient, accountId: string): Promise<boolean> {
   try {
     const { mailboxes, fresh } = await unifiedMailboxesFor(client, false);
-    if (!fresh && useEmailStore.getState().accountMailboxes[accountId]) return;
+    if (!fresh && useEmailStore.getState().accountMailboxes[accountId]) return true;
     useEmailStore.setState((state) => ({
       accountMailboxes: { ...state.accountMailboxes, [accountId]: mailboxes.slice() },
     }));
+    return true;
   } catch (error) {
     console.error(`Failed to fetch mailboxes for account ${accountId}:`, error);
+    return false;
   }
 }
 
@@ -1102,6 +1104,10 @@ export async function buildUnifiedAccountClients(
     // Skip the account on mailbox fetch failure.
     if (result.status !== 'fulfilled' || !result.value) continue;
     const { a, c, mailboxes, fresh } = result.value;
+    // A reused list never overwrites a live one, but fills a key nothing has published yet.
+    const publish = (key: string, list: Mailbox[]) => {
+      if (fresh || !useEmailStore.getState().accountMailboxes[key]) fetchedMailboxes[key] = list;
+    };
     try {
       const ownMailboxes = includeGroup
         ? mailboxes.filter((m) => !m.isShared)
@@ -1112,12 +1118,10 @@ export async function buildUnifiedAccountClients(
       // resolution branch-free against shared sources.
       const primaryJmapId = c.getAccountId();
       built.push({ accountId: a.id, accountLabel: a.label || a.email, client: c, mailboxes: ownMailboxes, clientAccountId: a.id, jmapAccountId: primaryJmapId, isShared: false, crossIncludedMailboxIds: resolveCrossIncludedMailboxIds(a.id, ownMailboxes) });
-      if (fresh) {
-        fetchedMailboxes[a.id] = ownMailboxes;
-        // Also cache under the JMAP id so `accountMailboxes[email.sourceAccountId]`
-        // resolves uniformly for personal and shared sources alike.
-        fetchedMailboxes[primaryJmapId] = ownMailboxes;
-      }
+      publish(a.id, ownMailboxes);
+      // Also cache under the JMAP id so `accountMailboxes[email.sourceAccountId]`
+      // resolves uniformly for personal and shared sources alike.
+      publish(primaryJmapId, ownMailboxes);
 
       if (includeGroup) {
         const sharedByOwner = new Map<string, Mailbox[]>();
@@ -1141,7 +1145,7 @@ export async function buildUnifiedAccountClients(
           // Cache the owner's mailbox list keyed by its JMAP id so single-email
           // and batch actions can resolve role-based destinations (trash/archive)
           // in the owner account instead of falling back to the active account.
-          if (fresh) fetchedMailboxes[ownerId] = ownerMailboxes;
+          publish(ownerId, ownerMailboxes);
         }
       }
     } catch {

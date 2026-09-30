@@ -59,7 +59,10 @@ export function useProMultiAccountMailboxes(): void {
       const client = getClientForAccount(id);
       if (!client || loaded.current.get(id) === client) continue;
       loaded.current.set(id, client);
-      void loadAccountMailboxes(client, id);
+      void loadAccountMailboxes(client, id).then((ok) => {
+        // Try a failed login again on the next run, as the identities hook does.
+        if (!ok && loaded.current.get(id) === client) loaded.current.delete(id);
+      });
     }
   }, [proInterface, isEmbedded, gmailSkin, connectedSignature, activeAccountId]);
 }
