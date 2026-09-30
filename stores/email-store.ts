@@ -1053,6 +1053,23 @@ async function unifiedMailboxesFor(
 }
 
 /**
+ * Puts one login's folder list into `accountMailboxes` through the same cache
+ * the unified scope uses, so the two never fetch the same list twice and a
+ * list already there is not fetched again until that login reports a change.
+ */
+export async function loadAccountMailboxes(client: IJMAPClient, accountId: string): Promise<void> {
+  try {
+    const { mailboxes, fresh } = await unifiedMailboxesFor(client, false);
+    if (!fresh && useEmailStore.getState().accountMailboxes[accountId]) return;
+    useEmailStore.setState((state) => ({
+      accountMailboxes: { ...state.accountMailboxes, [accountId]: mailboxes.slice() },
+    }));
+  } catch (error) {
+    console.error(`Failed to fetch mailboxes for account ${accountId}:`, error);
+  }
+}
+
+/**
  * Forgets the folder lists cached for the unified scope: one login's, when it
  * reports a change, or every login's when called without an argument.
  */
