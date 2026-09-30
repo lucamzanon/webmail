@@ -910,9 +910,6 @@ function LoginPageContent() {
     </div>
   ) : null;
 
-  // Servers that onboard accounts elsewhere (e.g. a Gmail bridge issuing its own
-  // credentials after Google consent) advertise a connect page; link it so a
-  // user without credentials yet knows where to get them.
   // Other servers in the list that sign in with their own OAuth client get a
   // button of their own, so signing in with Google does not first mean finding
   // the bridge in the server menu. Not in mobile handoff, which signs in
@@ -934,8 +931,10 @@ function LoginPageContent() {
     </Button>
   ));
 
-  // A server whose OAuth sign-in connects new accounts by itself needs no
-  // separate connect page.
+  // Servers that onboard accounts elsewhere (e.g. a Gmail bridge issuing its own
+  // credentials after Google consent) advertise a connect page; link it so a
+  // user without credentials yet knows where to get them. A server whose OAuth
+  // sign-in connects new accounts by itself needs no separate connect page.
   const connectLink = selectedServer?.connectUrl && !(selectedServer.oauth?.clientId && oauthMetadata) ? (
     <p className="text-xs text-muted-foreground leading-snug">
       <a
