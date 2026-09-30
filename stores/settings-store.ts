@@ -134,6 +134,27 @@ export type ArchiveMode = 'single' | 'year' | 'month';
 export type MailLayout = 'split' | 'focus' | 'horizontal';
 
 /**
+ * The layout the mail view actually uses.
+ *
+ * `mailLayout` is a display setting, so every account keeps its own copy in
+ * its display profile, while the skin is one choice for the whole app. Gmail's
+ * geometry - the list at full width, a conversation opening in its place - is
+ * the `focus` layout, and the skin used to get it by writing `focus` into the
+ * profile of whichever account was active when it was switched on. The other
+ * accounts kept their split panes, so switching account inside the Gmail shell
+ * brought back Bulwark's card rows and reading pane.
+ *
+ * Under the skin the layout is therefore `focus` for every account, and the
+ * saved value is not touched: turn the skin off and each account finds the
+ * layout it had. Read the layout through this (or `useEffectiveMailLayout`)
+ * wherever it decides what is drawn; read `mailLayout` itself only where the
+ * saved preference is being shown or edited.
+ */
+export function effectiveMailLayout(mailLayout: MailLayout, uiSkin: UiSkin): MailLayout {
+  return uiSkin === 'gmail' ? 'focus' : mailLayout;
+}
+
+/**
  * Spacing around a message body in the reader.
  * - 'auto'  : add a gutter unless the email paints its own full-bleed background
  * - 'always': always add the gutter
@@ -840,15 +861,8 @@ export const useSettingsStore = create<SettingsState>()(
         // Swap the shell geometry
         if (key === 'uiSkin') {
           applyUiSkin(value as UiSkin, get().density);
-          // Gmail has no reading pane by default: the list runs full width and
-          // a conversation opens in its place. That is exactly `mailLayout:
-          // 'focus'`, so picking the skin moves the default across. A layout
-          // the user already chose by hand is left alone, and the Layout
-          // setting still offers the split panes (Gmail's own reading-pane
-          // options) afterwards.
-          if (value === 'gmail' && get().mailLayout === 'split') {
-            set({ mailLayout: 'focus' });
-          }
+          // The skin's list-then-conversation layout is not written into
+          // `mailLayout`: see effectiveMailLayout().
         }
 
         // Apply animations to document root

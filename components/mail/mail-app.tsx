@@ -38,6 +38,7 @@ import { ShareNotificationToaster } from "@/components/layout/share-notification
 import { CalendarEventNotificationToaster } from "@/components/layout/calendar-event-notification-toaster";
 import { useAuthStore, redirectToLogin, saveRedirectAfterLogin } from '@/stores/auth-store';
 import { useSettingsStore } from "@/stores/settings-store";
+import { useEffectiveMailLayout } from "@/hooks/use-effective-mail-layout";
 import { useContactStore } from "@/stores/contact-store";
 import { useIdentityStore } from "@/stores/identity-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -137,7 +138,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
   const tCommon = useTranslations('common');
   const tQuote = useTranslations('quote_header');
   const { appName } = useConfig();
-  const mailLayout = useSettingsStore((state) => state.mailLayout);
+  const mailLayout = useEffectiveMailLayout();
   const uiSkin = useSettingsStore((state) => state.uiSkin);
   // Phones present search full-screen from the header field rather than
   // giving it a permanent second bar under the header.
