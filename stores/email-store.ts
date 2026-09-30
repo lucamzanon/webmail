@@ -1003,6 +1003,64 @@ function resolveDestLocalAccountId(mailbox: Mailbox): string | null {
  * Starred cross views to the chosen own folders (shared entries are left
  * unrestricted so all their folders are included).
  */
+/**
+ * Folder lists of the logins in the unified scope, shared between builds.
+ *
+ * The scope is rebuilt on every connection while a browser restores its
+ * logins, on every background push and on every unified browse, load-more and
+ * search - and each build used to ask every login for its folders again, one
+ * login after the other. With ten logins that was ten full `Mailbox/get`s per
+ * build and over a hundred in the first seconds. A list is now fetched once,
+ * shared by every build that wants it while in flight, and reused until that
+ * login reports a change (see {@link invalidateUnifiedMailboxes}, called from
+ * the push handlers). The time limit is a backstop for a change whose push was
+ * lost, not the freshness mechanism.
+ */
+const UNIFIED_MAILBOX_TTL_MS = 60_000;
+let unifiedMailboxGeneration = 0;
+const unifiedMailboxCache = new WeakMap<object, Map<boolean, { at: number; generation: number; promise: Promise<Mailbox[]> }>>();
+
+/**
+ * `fresh` is true only for the build that started the fetch. Only that build
+ * publishes the list into `accountMailboxes`: a reused one may be older than
+ * what the store holds now - optimistic updates land there directly - and
+ * writing it back would snap a just-changed counter back to its old value.
+ */
+async function unifiedMailboxesFor(
+  client: IJMAPClient,
+  includeGroup: boolean,
+): Promise<{ mailboxes: Mailbox[]; fresh: boolean }> {
+  let perClient = unifiedMailboxCache.get(client);
+  if (!perClient) {
+    perClient = new Map();
+    unifiedMailboxCache.set(client, perClient);
+  }
+  const hit = perClient.get(includeGroup);
+  if (hit && hit.generation === unifiedMailboxGeneration && Date.now() - hit.at < UNIFIED_MAILBOX_TTL_MS) {
+    return { mailboxes: await hit.promise, fresh: false };
+  }
+  const entry = {
+    at: Date.now(),
+    generation: unifiedMailboxGeneration,
+    promise: includeGroup ? client.getAllMailboxes() : client.getMailboxes(),
+  };
+  perClient.set(includeGroup, entry);
+  const slot = perClient;
+  entry.promise.catch(() => {
+    if (slot.get(includeGroup) === entry) slot.delete(includeGroup);
+  });
+  return { mailboxes: await entry.promise, fresh: true };
+}
+
+/**
+ * Forgets the folder lists cached for the unified scope: one login's, when it
+ * reports a change, or every login's when called without an argument.
+ */
+export function invalidateUnifiedMailboxes(client?: object): void {
+  if (client) unifiedMailboxCache.delete(client);
+  else unifiedMailboxGeneration++;
+}
+
 export async function buildUnifiedAccountClients(
   opts: { includeGroup?: boolean; scopeToClientAccountId?: string } = {},
 ): Promise<UnifiedAccountClient[]> {
@@ -1016,24 +1074,33 @@ export async function buildUnifiedAccountClients(
   // after the fan-out so single-email actions can resolve role-based
   // destinations (trash/archive) in the email's own account (issue #281).
   const fetchedMailboxes: Record<string, Mailbox[]> = {};
-  for (const a of authAccounts) {
+  // Every login at once rather than one after the other: the slowest login,
+  // not the sum of all of them, bounds how long the scope takes.
+  const fetched = await Promise.allSettled(authAccounts.map(async (a) => {
     const c = allClients.get(a.id);
-    if (!c) continue;
+    if (!c) return null;
+    return { a, c, ...(await unifiedMailboxesFor(c, includeGroup)) };
+  }));
+  for (const result of fetched) {
+    // Skip the account on mailbox fetch failure.
+    if (result.status !== 'fulfilled' || !result.value) continue;
+    const { a, c, mailboxes, fresh } = result.value;
     try {
-      const mailboxes = includeGroup ? await c.getAllMailboxes() : await c.getMailboxes();
       const ownMailboxes = includeGroup
         ? mailboxes.filter((m) => !m.isShared)
-        : mailboxes;
+        : mailboxes.slice();
       // Primary JMAP account id of this login. Stamped onto personal emails as
       // `sourceAccountId`; equals the client's primary so passing it to JMAP is a
       // no-op (no namespacing) — keeps personal behavior identical while making
       // resolution branch-free against shared sources.
       const primaryJmapId = c.getAccountId();
       built.push({ accountId: a.id, accountLabel: a.label || a.email, client: c, mailboxes: ownMailboxes, clientAccountId: a.id, jmapAccountId: primaryJmapId, isShared: false, crossIncludedMailboxIds: resolveCrossIncludedMailboxIds(a.id, ownMailboxes) });
-      fetchedMailboxes[a.id] = ownMailboxes;
-      // Also cache under the JMAP id so `accountMailboxes[email.sourceAccountId]`
-      // resolves uniformly for personal and shared sources alike.
-      fetchedMailboxes[primaryJmapId] = ownMailboxes;
+      if (fresh) {
+        fetchedMailboxes[a.id] = ownMailboxes;
+        // Also cache under the JMAP id so `accountMailboxes[email.sourceAccountId]`
+        // resolves uniformly for personal and shared sources alike.
+        fetchedMailboxes[primaryJmapId] = ownMailboxes;
+      }
 
       if (includeGroup) {
         const sharedByOwner = new Map<string, Mailbox[]>();
@@ -1057,7 +1124,7 @@ export async function buildUnifiedAccountClients(
           // Cache the owner's mailbox list keyed by its JMAP id so single-email
           // and batch actions can resolve role-based destinations (trash/archive)
           // in the owner account instead of falling back to the active account.
-          fetchedMailboxes[ownerId] = ownerMailboxes;
+          if (fresh) fetchedMailboxes[ownerId] = ownerMailboxes;
         }
       }
     } catch {

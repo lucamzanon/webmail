@@ -31,7 +31,7 @@ import { usePolicyStore } from "@/stores/policy-store";
 import type { UnifiedAccountClient } from "@/lib/unified-mailbox";
 import { connectedAccountsGrew } from "@/lib/unified-mailbox";
 import { KeyboardShortcutsModal } from "@/components/keyboard-shortcuts-modal";
-import { useEmailStore, buildUnifiedAccountClients, captureViewToken, ArchiveMailboxNotFoundError, findArchiveMailbox, resolveUnstampedEmailAccountId, emptyFolderMovesToTrash } from "@/stores/email-store";
+import { useEmailStore, buildUnifiedAccountClients, invalidateUnifiedMailboxes, captureViewToken, ArchiveMailboxNotFoundError, findArchiveMailbox, resolveUnstampedEmailAccountId, emptyFolderMovesToTrash } from "@/stores/email-store";
 import { groupSearchScopeFolders, SEARCH_SCOPE_ALL_FOLDERS } from "@/lib/search-scope-folders";
 import { toast } from "@/stores/toast-store";
 import { formatRejectedRecipients, type JMAPClient } from "@/lib/jmap/client";
@@ -1388,11 +1388,18 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       clients: useAuthStore.getState().getAllConnectedClients(),
       activeAccountId,
       listen: (c, role) => {
+        // A login that reports a change has a folder list worth fetching again;
+        // the others keep theirs, which is what spares the unified scope a full
+        // round of Mailbox/get on every push.
         if (role === 'active') {
-          c.onStateChange((change: StateChange) => pushHandlersRef.current.handleStateChange(change, c));
+          c.onStateChange((change: StateChange) => {
+            invalidateUnifiedMailboxes(c);
+            pushHandlersRef.current.handleStateChange(change, c);
+          });
           return;
         }
         c.onStateChange(() => {
+          invalidateUnifiedMailboxes(c);
           const h = pushHandlersRef.current;
           h.buildPopulatedUnifiedAccounts()
             .then((built) => {
