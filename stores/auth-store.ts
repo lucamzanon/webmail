@@ -46,6 +46,9 @@ import {
 } from '@/lib/auth/lite-tokens';
 import { clearLiteOAuthFlow, readLiteOAuthFlow } from '@/lib/auth/lite-oauth';
 
+/** Logins restored at once after the one on screen: enough to overlap round trips, few enough not to crowd the server. */
+const RESTORE_CONCURRENCY = 4;
+
 interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -2596,10 +2599,21 @@ export const useAuthStore = create<AuthState>()(
           const otherAccounts = accounts.filter((account) => account.id !== targetId);
           if (targetEntry) await restoreAccount(targetEntry);
 
+          // A few at a time rather than one after the other: with many logins
+          // the serial walk left the last of them - and with it a complete
+          // unified inbox - waiting on every other login's round trips. Each
+          // restore handles its own failures, so one slow or broken login
+          // holds up only its own slot.
           const restoreRemaining = async () => {
-            for (const account of otherAccounts) {
-              await restoreAccount(account);
-            }
+            const queue = [...otherAccounts];
+            const worker = async () => {
+              for (let next = queue.shift(); next; next = queue.shift()) {
+                await restoreAccount(next);
+              }
+            };
+            await Promise.allSettled(
+              Array.from({ length: Math.min(RESTORE_CONCURRENCY, queue.length) }, worker),
+            );
           };
 
           if (clients.has(targetId)) {
