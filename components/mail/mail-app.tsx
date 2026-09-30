@@ -1477,6 +1477,8 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
   // session and the mailbox list are up. Runs at most once per mount: after
   // this, the URL is an output of the view (see buildMailUrl), not an input.
   const deepLinkHandledRef = useRef(false);
+  const mailAppMountedRef = useRef(false);
+  useEffect(() => { mailAppMountedRef.current = true; return () => { mailAppMountedRef.current = false; }; }, []);
   const applyMailDeepLink = async (link: MailDeepLink, opts?: { onLoad?: boolean }) => {
     // The folder list before an account switch, if one happened: until the
     // new mailbox's folders arrive the store still holds these (or nothing).
@@ -1490,6 +1492,9 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       : undefined);
     const switchesAccount = !!linkAccountId && linkAccountId !== useAuthStore.getState().activeAccountId;
     if (switchesAccount) {
+      const startedOn = useAuthStore.getState().activeAccountId;
+      const startedIn = useEmailStore.getState().selectedMailbox;
+      const startedWith = useEmailStore.getState().selectedEmail?.id ?? null;
       // The login may still be reconnecting - a tapped notification reopens
       // the app and the logins come back one at a time - so wait for it
       // rather than calling a late mailbox unavailable.
@@ -1497,8 +1502,15 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
         toast.error(t('deep_link.account_unavailable'));
         return;
       }
+      // The user moved on while the login reconnected: don't pull them away.
+      if (!mailAppMountedRef.current
+        || useAuthStore.getState().activeAccountId !== startedOn
+        || useEmailStore.getState().selectedMailbox !== startedIn
+        || (useEmailStore.getState().selectedEmail?.id ?? null) !== startedWith) return;
       switchedFrom = useEmailStore.getState().mailboxes;
       await switchAccount(linkAccountId);
+      // Overtaken or failed: the folders on screen are not the link's account's.
+      if (useAuthStore.getState().activeAccountId !== linkAccountId) return;
     }
 
     const activeClient = useAuthStore.getState().client;
