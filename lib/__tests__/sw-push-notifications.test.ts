@@ -180,6 +180,31 @@ describe('service worker push notifications', () => {
     expect(shade.get('bulwark-mail:other')!.title).toBe('bob@example.com (luca@orofruit.com)');
   });
 
+  it('rings once for a burst across addresses, and again once the window has passed', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-09-30T10:00:00Z'));
+      const other = { id: 'other', name: 'luca@orofruit.com', loginId: 'luca@orofruit.com@bridge.ma.gl' };
+      const { push, shade } = loadWorker((url: URL) => (url.searchParams.get('accountId') === 'other'
+        ? { account: other, unreadTotal: 1, email: BOB, emails: [BOB] }
+        : { account: ACCOUNT, unreadTotal: 1, email: ALICE, emails: [ALICE] }));
+
+      await push({ '@type': 'EmailPush', accountId: 'acct', emails: [{ id: 'e1' }] });
+      expect(shade.get('bulwark-mail:acct')!.options).toMatchObject({ renotify: true, silent: false });
+
+      vi.setSystemTime(new Date('2026-09-30T10:00:05Z'));
+      await push({ '@type': 'EmailPush', accountId: 'other', emails: [{ id: 'e2' }] });
+      // Shown, but without a second sound.
+      expect(shade.get('bulwark-mail:other')!.options).toMatchObject({ renotify: false, silent: true });
+
+      vi.setSystemTime(new Date('2026-09-30T10:00:40Z'));
+      await push({ '@type': 'EmailPush', accountId: 'other', emails: [{ id: 'e3' }] });
+      expect(shade.get('bulwark-mail:other')!.options).toMatchObject({ renotify: true, silent: false });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('starts fresh once the address\'s notification has been dismissed', async () => {
     const { push, shade } = loadWorker(previewOf(ALICE, BOB));
 

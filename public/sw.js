@@ -354,6 +354,7 @@ async function postAccountNotification(accountId, accountName, loginId, entries,
     data = { kind: "mail-list", accountId, loginId, entries };
   }
 
+  const quiet = await withinQuietWindow();
   await self.registration.showNotification(title, {
     body,
     tag: accountTag(accountId),
@@ -362,9 +363,43 @@ async function postAccountNotification(accountId, accountName, loginId, entries,
     timestamp: (newest && Date.parse(newest.receivedAt)) || Date.now(),
     data,
     // Same tag, so this replaces the address's entry; renotify makes the
-    // replacement alert as a new arrival rather than update silently.
-    renotify: true,
+    // replacement alert as a new arrival rather than update silently. Inside
+    // the quiet window the entry still appears or updates, without a sound.
+    renotify: !quiet,
+    silent: quiet,
   });
+}
+
+// One message often lands in several of the user's addresses at once - a
+// list, a forward, the same newsletter on two logins - and each address has
+// its own notification. Only the first alert of a burst makes a sound; the
+// ones that follow within the window show up silently. The window runs from
+// the last audible alert and is not extended by the silent ones, so a steady
+// trickle still rings every so often.
+const QUIET_WINDOW_MS = 30_000;
+
+function lastAlertKey() {
+  return `${self.location.origin}${BASE_PATH}/__push-state/last-alert`;
+}
+
+/** True when an audible alert went off less than QUIET_WINDOW_MS ago; otherwise records this one. */
+async function withinQuietWindow() {
+  const now = Date.now();
+  try {
+    const cache = await caches.open(PUSH_STATE_CACHE);
+    const res = await cache.match(lastAlertKey());
+    const last = res ? Number((await res.json()).at) : 0;
+    if (last && now - last >= 0 && now - last < QUIET_WINDOW_MS) return true;
+    await cache.put(
+      lastAlertKey(),
+      new Response(JSON.stringify({ at: now }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+  } catch (_) {
+    // Without the store every notification alerts, as before.
+  }
+  return false;
 }
 
 // Record which message ids this push announced so a redelivery stays quiet.
