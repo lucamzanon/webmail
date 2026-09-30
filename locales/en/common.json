@@ -135,6 +135,8 @@
     "show_all_tags": "Show all ({count})",
     "show_fewer_tags": "Show less",
     "folders": "Folders",
+    "show_more": "More",
+    "show_fewer": "Less",
     "shared": "Shared",
     "mail": "Mail",
     "nav_label": "Navigation",

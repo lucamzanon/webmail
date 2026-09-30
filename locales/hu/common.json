@@ -135,6 +135,8 @@
     "show_all_tags": "Összes megjelenítése ({count})",
     "show_fewer_tags": "Kevesebb megjelenítése",
     "folders": "Mappák",
+    "show_more": "Több",
+    "show_fewer": "Kevesebb",
     "shared": "Megosztott",
     "mail": "Levelek",
     "nav_label": "Navigáció",

@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useEmailStore, ArchiveMailboxNotFoundError } from "@/stores/email-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useEffectiveMailLayout } from "@/hooks/use-effective-mail-layout";
 import { useUIStore } from "@/stores/ui-store";
 import { groupEmailsByThread, sortThreadGroups, threadKeyFor } from "@/lib/thread-utils";
 import { useContextMenu } from "@/hooks/use-context-menu";
@@ -208,7 +209,7 @@ export function EmailList({
   const density = useSettingsStore((state) => state.density);
   const showPreview = useSettingsStore((state) => state.showPreview);
   const showVerificationCodes = useSettingsStore((state) => state.showVerificationCodes);
-  const mailLayout = useSettingsStore((state) => state.mailLayout);
+  const mailLayout = useEffectiveMailLayout();
   const footerHasMore = hasMore ?? hasMoreEmails;
   const footerIsLoadingMore = isLoadingMoreItems ?? isLoadingMore;
   const isMobile = useUIStore((state) => state.isMobile);

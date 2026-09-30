@@ -25,7 +25,7 @@ const EmailComposer = dynamic(
 import { ProtocolAccountPicker } from "@/components/protocol/protocol-account-picker";
 import { ThreadConversationView } from "@/components/email/thread-conversation-view";
 import { MobileHeader } from "@/components/layout/mobile-header";
-import { ThreadGroup, Email, Mailbox, isUnifiedMailboxId, UNIFIED_ROLE_BY_ID, CROSS_VIEW_BY_ID, isCrossViewId } from "@/lib/jmap/types";
+import { ThreadGroup, Email, Mailbox, isUnifiedMailboxId, UNIFIED_MAILBOX_IDS, UNIFIED_ROLE_BY_ID, CROSS_VIEW_BY_ID, CROSS_VIEW_IDS, isCrossViewId } from "@/lib/jmap/types";
 import { useAccountStore, waitForConnectedAccount } from "@/stores/account-store";
 import { usePolicyStore } from "@/stores/policy-store";
 import type { UnifiedAccountClient } from "@/lib/unified-mailbox";
@@ -41,6 +41,7 @@ import { ShareNotificationToaster } from "@/components/layout/share-notification
 import { CalendarEventNotificationToaster } from "@/components/layout/calendar-event-notification-toaster";
 import { useAuthStore, redirectToLogin, saveRedirectAfterLogin } from '@/stores/auth-store';
 import { useSettingsStore } from "@/stores/settings-store";
+import { useEffectiveMailLayout } from "@/hooks/use-effective-mail-layout";
 import { useContactStore } from "@/stores/contact-store";
 import { useIdentityStore } from "@/stores/identity-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -71,6 +72,7 @@ import { TotpReauthDialog } from "@/components/totp-reauth-dialog";
 import { DragDropProvider } from "@/contexts/drag-drop-context";
 import { isFilterEmpty, activeFilterCount, DEFAULT_SEARCH_FILTERS } from "@/lib/jmap/search-utils";
 import { SearchBox, type ContactSearchField } from "@/components/search/search-box";
+import { FilterPanelHost } from "@/components/search/filter-panel-host";
 import type { ContactSuggestion } from "@/lib/search-suggestions";
 import type { Attachment } from "@/lib/jmap/types";
 import { peekListAttachments, requestListAttachments, type ListAttachmentSource, type LoadListAttachments } from "@/lib/list-attachments";
@@ -167,7 +169,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
   const tCommon = useTranslations('common');
   const tQuote = useTranslations('quote_header');
   const { appName } = useConfig();
-  const mailLayout = useSettingsStore((state) => state.mailLayout);
+  const mailLayout = useEffectiveMailLayout();
   const uiSkin = useSettingsStore((state) => state.uiSkin);
   // Phones present search full-screen from the header field rather than
   // giving it a permanent second bar under the header.
@@ -545,6 +547,17 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
     unifiedCrossAccountGate &&
     accounts.filter((a) => a.isConnected).length > 1;
 
+  // Gmail's account popover offers the merged inbox above the addresses it
+  // merges. Offering it when it cannot be built would give a row that selects
+  // an empty list, so it appears on exactly the terms the sidebar's own
+  // unified section does.
+  const allInboxesReachable = enableUnifiedMailbox && crossAccountActive;
+  const allInboxesSelected = selectedMailbox === UNIFIED_MAILBOX_IDS.inbox;
+
+  // The node the Gmail top bar renders under its search field; the filter
+  // panel is portalled into it so it hangs off the control that opens it.
+  const [filterAnchor, setFilterAnchor] = useState<HTMLDivElement | null>(null);
+
   // Builds the populated UnifiedAccountClient[] used by the unified-view
   // effects and one-shot actions in this page. Reads the settings at call time
   // so the latest toggle values are always honored. When the cross-account
@@ -895,13 +908,19 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       if (isScheduledView || !selectedEmail) return;
       toggleEmailSelection(selectedEmail);
     },
-    // Gmail's `g` sequences. Starred is a filter here rather than a folder,
-    // which is what the advanced-search star toggle already drives; All mail
-    // uses the folder the account nominated in Layout settings, falling back
-    // to its Archive.
+    // Gmail's `g` sequences. `g s` goes to the "All starred" view when the user
+    // has one - that is a list you arrive at and leave, which is what the key
+    // means in Gmail. Without it there is no starred destination here, and the
+    // fallback is the advanced-search star toggle: it shows the same messages,
+    // but as a search you then have to clear. All mail uses the folder the
+    // account nominated in Layout settings, falling back to its Archive.
     onGoToMailbox: (target: GoToMailboxTarget) => {
       if (isScheduledView && target !== 'inbox') return;
       if (target === 'starred') {
+        if (showCrossStarred) {
+          void handleMailboxSelect(CROSS_VIEW_IDS.starred);
+          return;
+        }
         setSearchFilters({ ...DEFAULT_SEARCH_FILTERS, isStarred: true });
         void handleAdvancedSearch();
         return;
@@ -936,7 +955,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
       }
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }), [activeEmails, selectedEmail, client, selectedMailbox, isMobile, isTablet, selectedEmailKeys, mailboxes, isScheduledView, gmailShell]);
+  }), [activeEmails, selectedEmail, client, selectedMailbox, isMobile, isTablet, selectedEmailKeys, mailboxes, isScheduledView, gmailShell, showCrossStarred]);
 
   // Initialize keyboard shortcuts
   useKeyboardShortcuts({
@@ -3764,6 +3783,11 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
             onInlineApp={handleInlineApp}
             onCloseInlineApp={closeInlineApp}
             activeAppId={inlineApp?.id ?? null}
+            onSelectAllInboxes={
+              allInboxesReachable ? () => handleMailboxSelect(UNIFIED_MAILBOX_IDS.inbox) : undefined
+            }
+            allInboxesSelected={allInboxesSelected}
+            onFilterAnchorChange={setFilterAnchor}
           />
         )}
         <div className="flex flex-1 overflow-hidden">
@@ -3945,6 +3969,10 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
               searchPlaceholder={searchQuery || t('sidebar.search_placeholder_hint')}
               searchActive={!!searchQuery}
               onClearSearch={handleClearSearch}
+              onSelectAllInboxes={
+                allInboxesReachable ? () => handleMailboxSelect(UNIFIED_MAILBOX_IDS.inbox) : undefined
+              }
+              allInboxesSelected={allInboxesSelected}
             />
 
             {/* Search Bar + Inline Advanced Filters. On phones this is not a
@@ -3978,6 +4006,8 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                   onRefresh={handleManualRefresh}
                   isRefreshing={isManualRefreshing}
                   onMarkFolderRead={selectedMailbox ? () => handleMarkFolderRead(selectedMailbox) : undefined}
+                  onMarkAllFoldersRead={handleMarkAllFoldersRead}
+                  onEmptyFolder={selectedMailbox ? () => void handleEmptyFolderFromContextMenu(selectedMailbox) : undefined}
                   disabled={isScheduledView}
                 />
               ) : (
@@ -4069,9 +4099,11 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
               </div>
               )}
 
-              {/* Filter Area */}
+              {/* Filter Area. Under the Gmail skin the button that opens this
+                  lives in the global top bar, so the panel drops from the
+                  search field there rather than from the list header. */}
               {isAdvancedSearchOpen && (
-                <div className="px-3 pb-3 space-y-2.5 animate-in slide-in-from-top-1 fade-in duration-150">
+                <FilterPanelHost anchor={gmailShell ? filterAnchor : null}>
                   {/* Quick toggle filters + clear */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -4252,7 +4284,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
                       </div>
                     </div>
                   )}
-                </div>
+                </FilterPanelHost>
               )}
             </div>
             )}

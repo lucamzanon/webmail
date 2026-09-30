@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Archive,
   CheckSquare,
+  Folder,
+  FolderInput,
   Loader2,
   Mail,
   MailOpen,
@@ -12,6 +14,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   Square,
+  Tag,
   Trash2,
 } from "@/components/icons";
 import { useTranslations } from "next-intl";
@@ -20,8 +23,11 @@ import { useEmailStore } from "@/stores/email-store";
 import { useConfirmDialog } from "@/hooks/use-confirm-dialog";
 import { useMenuNavigation } from "@/hooks/use-menu-navigation";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { TagPicker } from "@/components/email/tag-picker";
+import { keywordsForTagChange, tagsOnEvery } from "@/lib/batch-tagging";
+import { localizeMailboxName } from "@/lib/mailbox-label";
 import { emailKeyFor } from "@/lib/thread-utils";
-import { cn } from "@/lib/utils";
+import { buildMailboxTree, cn, type MailboxNode } from "@/lib/utils";
 
 interface GmailListToolbarProps {
   /** Loaded conversation count, for the right-hand range readout. */
@@ -31,6 +37,9 @@ interface GmailListToolbarProps {
   onRefresh: () => void;
   isRefreshing?: boolean;
   onMarkFolderRead?: () => void;
+  onMarkAllFoldersRead?: () => void;
+  /** Only offered where emptying is the usual thing to do: spam and the bin. */
+  onEmptyFolder?: () => void;
   /** Scheduled view: only the per-message scheduling actions make sense. */
   disabled?: boolean;
 }
@@ -81,12 +90,16 @@ export function GmailListToolbar({
   onRefresh,
   isRefreshing = false,
   onMarkFolderRead,
+  onMarkAllFoldersRead,
+  onEmptyFolder,
   disabled = false,
 }: GmailListToolbarProps) {
   const t = useTranslations("email_list");
   const tBatch = useTranslations("email_list.batch_actions");
   const tActions = useTranslations("settings.email_behavior.hover_actions");
   const tFolder = useTranslations("mailbox_context_menu");
+  const tMenu = useTranslations("context_menu");
+  const tSidebar = useTranslations("sidebar");
 
   const client = useAuthStore((s) => s.client);
   const {
@@ -101,6 +114,8 @@ export function GmailListToolbar({
     batchMarkAsRead,
     batchMarkAsSpam,
     batchUndoSpam,
+    batchMoveToMailbox,
+    setEmailKeywords,
     isUnifiedView,
     unifiedRole,
   } = useEmailStore();
@@ -114,6 +129,24 @@ export function GmailListToolbar({
     onClose: closeMenu,
     triggerRef: menuButtonRef,
   });
+  const [moveOpen, setMoveOpen] = useState(false);
+  const moveButtonRef = useRef<HTMLButtonElement>(null);
+  const closeMove = useCallback(() => setMoveOpen(false), []);
+  const { menuRef: moveRef, onKeyDown: onMoveKeyDown } = useMenuNavigation<HTMLDivElement>({
+    open: moveOpen,
+    onClose: closeMove,
+    triggerRef: moveButtonRef,
+  });
+
+  const [tagOpen, setTagOpen] = useState(false);
+  const tagButtonRef = useRef<HTMLButtonElement>(null);
+  const closeTag = useCallback(() => setTagOpen(false), []);
+  const { menuRef: tagRef, onKeyDown: onTagKeyDown } = useMenuNavigation<HTMLDivElement>({
+    open: tagOpen,
+    onClose: closeTag,
+    triggerRef: tagButtonRef,
+  });
+
   const { dialogProps: confirmDialogProps, confirm: confirmDialog } = useConfirmDialog();
 
   useEffect(() => {
@@ -128,6 +161,18 @@ export function GmailListToolbar({
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [menuOpen, menuRef]);
+
+  useEffect(() => {
+    if (!moveOpen && !tagOpen) return;
+    const onPointerDown = (e: MouseEvent) => {
+      const inside = (button: HTMLElement | null, menu: HTMLElement | null) =>
+        button?.contains(e.target as Node) || menu?.contains(e.target as Node);
+      if (!inside(moveButtonRef.current, moveRef.current)) setMoveOpen(false);
+      if (!inside(tagButtonRef.current, tagRef.current)) setTagOpen(false);
+    };
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [moveOpen, tagOpen, moveRef, tagRef]);
 
   const selectionCount = selectedEmailKeys.size;
   const hasSelection = selectionCount > 0;
@@ -179,6 +224,83 @@ export function GmailListToolbar({
       if (!confirmed) return;
       await batchDelete(client, isInTrash);
     });
+
+  const selectedEmails = emails.filter((email) => selectedEmailKeys.has(emailKeyFor(email)));
+
+  // The same targets the row's own context menu offers: somewhere else, that
+  // will take a message, and that you are not already in. Drafts is excluded
+  // because moving mail into it would make it a draft of yours.
+  const moveTargetIds = new Set(
+    mailboxes
+      .filter((mailbox) =>
+        mailbox.id !== selectedMailbox &&
+        mailbox.role !== "drafts" &&
+        !mailbox.id.startsWith("shared-") &&
+        mailbox.myRights?.mayAddItems
+      )
+      .map((mailbox) => mailbox.id)
+  );
+  const pruneToTargets = (nodes: MailboxNode[]): MailboxNode[] =>
+    nodes.reduce<MailboxNode[]>((kept, node) => {
+      const children = pruneToTargets(node.children);
+      if (moveTargetIds.has(node.id) || children.length > 0) kept.push({ ...node, children });
+      return kept;
+    }, []);
+  const moveTree = pruneToTargets(buildMailboxTree(mailboxes));
+
+  const renderMoveNodes = (nodes: MailboxNode[], depth = 0): React.ReactNode =>
+    nodes.map((node) => {
+      const label = localizeMailboxName(node.role, node.name, (key) => tSidebar(`mailboxes.${key}`));
+      const isTarget = moveTargetIds.has(node.id);
+      return (
+        <div key={node.id}>
+          {isTarget ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => handleMove(node.id)}
+              style={{ paddingInlineStart: `${12 + depth * 16}px` }}
+              className="w-full flex items-center gap-2 pe-3 py-2 text-start text-sm hover:bg-muted"
+            >
+              <Folder className="w-4 h-4 flex-shrink-0 text-muted-foreground" />
+              <span className="truncate">{label}</span>
+            </button>
+          ) : (
+            <div
+              style={{ paddingInlineStart: `${12 + depth * 16}px` }}
+              className="flex items-center gap-2 pe-3 py-2 text-sm text-muted-foreground"
+            >
+              <Folder className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">{label}</span>
+            </div>
+          )}
+          {node.children.length > 0 && renderMoveNodes(node.children, depth + 1)}
+        </div>
+      );
+    });
+
+  const appliedTags = tagsOnEvery(selectedEmails);
+
+  const handleMove = (mailboxId: string) => {
+    setMoveOpen(false);
+    void run(async () => {
+      if (client) await batchMoveToMailbox(client, mailboxId);
+    });
+  };
+
+  // One request per message, each routed to the account that owns it, because
+  // a selection in the unified view spans accounts and a keyword written to
+  // the wrong one is accepted and then silently lost.
+  const handleToggleTag = (tagId: string) => {
+    const apply = !appliedTags.includes(tagId);
+    void run(async () => {
+      if (!client) return;
+      for (const email of selectedEmails) {
+        const keywords = keywordsForTagChange(email, tagId, apply);
+        if (keywords) await setEmailKeywords(client, email.id, keywords);
+      }
+    });
+  };
 
   const handleSpam = () =>
     run(async () => {
@@ -264,6 +386,37 @@ export function GmailListToolbar({
             >
               {tFolder("mark_folder_read")}
             </button>
+            {onMarkAllFoldersRead && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onMarkAllFoldersRead();
+                }}
+                className="w-full px-3 py-2 text-start text-sm hover:bg-muted"
+              >
+                {tFolder("mark_all_folders_read")}
+              </button>
+            )}
+            {/* Gmail offers this only where emptying a folder is the usual
+                thing to do - spam and the bin - and so does this menu. */}
+            {onEmptyFolder && (isInJunk || isInTrash) && (
+              <>
+                <div className="my-1 h-px bg-border" />
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onEmptyFolder();
+                  }}
+                  className="w-full px-3 py-2 text-start text-sm text-destructive hover:bg-muted"
+                >
+                  {tFolder("empty_folder")}
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -293,6 +446,69 @@ export function GmailListToolbar({
             disabled={isProcessing}
             className="hover:text-red-600 dark:hover:text-red-400"
           />
+          <div className="w-px h-6 bg-border mx-1 shrink-0" />
+          {moveTree.length > 0 && (
+            <div className="relative shrink-0">
+              <button
+                ref={moveButtonRef}
+                type="button"
+                onClick={() => { setTagOpen(false); setMoveOpen((v) => !v); }}
+                aria-haspopup="menu"
+                aria-expanded={moveOpen}
+                title={tMenu("move_to")}
+                aria-label={tMenu("move_to")}
+                className={cn(
+                  "grid place-items-center w-10 h-10 rounded-full transition-colors",
+                  moveOpen
+                    ? "bg-foreground/10 text-foreground"
+                    : "text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+                )}
+              >
+                <FolderInput className="w-[18px] h-[18px]" />
+              </button>
+              {moveOpen && (
+                <div
+                  ref={moveRef}
+                  onKeyDown={onMoveKeyDown}
+                  role="menu"
+                  aria-label={tMenu("move_to")}
+                  className="absolute start-0 top-full mt-1 z-50 min-w-64 max-h-80 overflow-y-auto rounded-lg border border-border bg-popover py-1 shadow-xl"
+                >
+                  {renderMoveNodes(moveTree)}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="relative shrink-0">
+            <button
+              ref={tagButtonRef}
+              type="button"
+              onClick={() => { setMoveOpen(false); setTagOpen((v) => !v); }}
+              aria-haspopup="menu"
+              aria-expanded={tagOpen}
+              title={tMenu("tag")}
+              aria-label={tMenu("tag")}
+              className={cn(
+                "grid place-items-center w-10 h-10 rounded-full transition-colors",
+                tagOpen
+                  ? "bg-foreground/10 text-foreground"
+                  : "text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+              )}
+            >
+              <Tag className="w-[18px] h-[18px]" />
+            </button>
+            {tagOpen && (
+              <div
+                ref={tagRef}
+                onKeyDown={onTagKeyDown}
+                role="menu"
+                aria-label={tMenu("tag")}
+                className="absolute start-0 top-full mt-1 z-50 min-w-64 rounded-lg border border-border bg-popover py-1 shadow-xl"
+              >
+                <TagPicker selectedIds={appliedTags} onToggle={handleToggleTag} />
+              </div>
+            )}
+          </div>
           <div className="w-px h-6 bg-border mx-1 shrink-0" />
           <ToolbarButton
             icon={MailOpen}

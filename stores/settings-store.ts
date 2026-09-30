@@ -134,6 +134,27 @@ export type ArchiveMode = 'single' | 'year' | 'month';
 export type MailLayout = 'split' | 'focus' | 'horizontal';
 
 /**
+ * The layout the mail view actually uses.
+ *
+ * `mailLayout` is a display setting, so every account keeps its own copy in
+ * its display profile, while the skin is one choice for the whole app. Gmail's
+ * geometry - the list at full width, a conversation opening in its place - is
+ * the `focus` layout, and the skin used to get it by writing `focus` into the
+ * profile of whichever account was active when it was switched on. The other
+ * accounts kept their split panes, so switching account inside the Gmail shell
+ * brought back Bulwark's card rows and reading pane.
+ *
+ * Under the skin the layout is therefore `focus` for every account, and the
+ * saved value is not touched: turn the skin off and each account finds the
+ * layout it had. Read the layout through this (or `useEffectiveMailLayout`)
+ * wherever it decides what is drawn; read `mailLayout` itself only where the
+ * saved preference is being shown or edited.
+ */
+export function effectiveMailLayout(mailLayout: MailLayout, uiSkin: UiSkin): MailLayout {
+  return uiSkin === 'gmail' ? 'focus' : mailLayout;
+}
+
+/**
  * Spacing around a message body in the reader.
  * - 'auto'  : add a gutter unless the email paints its own full-bleed background
  * - 'always': always add the gutter
@@ -798,7 +819,7 @@ export const useSettingsStore = create<SettingsState>()(
         const display = profiles[state.sharedDisplaySourceId ?? accountId ?? ''];
         set({ displayAccountId: accountId, displayProfiles: profiles, accountThemes: themes, ...display });
         applyFontSize(get().fontSize);
-        applyDensity(get().density);
+        applyDensity(get().density, get().uiSkin);
         applyAnimations(get().animationsEnabled);
         if (accountId) {
           const accountTheme = themes[accountId] ?? (state.displayAccountId
@@ -819,7 +840,7 @@ export const useSettingsStore = create<SettingsState>()(
         set({ sharedDisplaySourceId: accountId, displayProfiles: profiles,
           ...profiles[accountId ?? state.displayAccountId ?? ''] });
         applyFontSize(get().fontSize);
-        applyDensity(get().density);
+        applyDensity(get().density, get().uiSkin);
         applyAnimations(get().animationsEnabled);
       },
 
@@ -839,21 +860,14 @@ export const useSettingsStore = create<SettingsState>()(
 
         // Apply density to document root
         if (key === 'density') {
-          applyDensity(value as Density);
+          applyDensity(value as Density, get().uiSkin);
         }
 
         // Swap the shell geometry
         if (key === 'uiSkin') {
-          applyUiSkin(value as UiSkin);
-          // Gmail has no reading pane by default: the list runs full width and
-          // a conversation opens in its place. That is exactly `mailLayout:
-          // 'focus'`, so picking the skin moves the default across. A layout
-          // the user already chose by hand is left alone, and the Layout
-          // setting still offers the split panes (Gmail's own reading-pane
-          // options) afterwards.
-          if (value === 'gmail' && get().mailLayout === 'split') {
-            set({ mailLayout: 'focus' });
-          }
+          applyUiSkin(value as UiSkin, get().density);
+          // The skin's list-then-conversation layout is not written into
+          // `mailLayout`: see effectiveMailLayout().
         }
 
         // Apply animations to document root
@@ -869,8 +883,8 @@ export const useSettingsStore = create<SettingsState>()(
           ...state.displayProfiles, [owner]: pickDisplaySettings(DEFAULT_SETTINGS),
         } } : {}) });
         applyFontSize(DEFAULT_SETTINGS.fontSize);
-        applyDensity(DEFAULT_SETTINGS.density);
-        applyUiSkin(DEFAULT_SETTINGS.uiSkin);
+        applyDensity(DEFAULT_SETTINGS.density, DEFAULT_SETTINGS.uiSkin);
+        applyUiSkin(DEFAULT_SETTINGS.uiSkin, DEFAULT_SETTINGS.density);
         applyAnimations(DEFAULT_SETTINGS.animationsEnabled);
       },
 
@@ -1090,8 +1104,8 @@ export const useSettingsStore = create<SettingsState>()(
 
           // Apply visual settings
           applyFontSize(get().fontSize);
-          applyDensity(get().density);
-          applyUiSkin(get().uiSkin);
+          applyDensity(get().density, get().uiSkin);
+          applyUiSkin(get().uiSkin, get().density);
           applyAnimations(get().animationsEnabled);
 
           // Apply cross-store settings
@@ -1321,8 +1335,8 @@ export const useSettingsStore = create<SettingsState>()(
               state.messageListOrderScope = 'inbox';
             }
             applyFontSize(state.fontSize);
-            applyDensity(state.density);
-            applyUiSkin(state.uiSkin);
+            applyDensity(state.density, state.uiSkin);
+            applyUiSkin(state.uiSkin, state.density);
             applyAnimations(state.animationsEnabled);
           }
         };
@@ -1410,48 +1424,72 @@ function applyFontSize(size: FontSize) {
   root.style.setProperty('--font-size-base', sizeMap[size]);
 }
 
-function applyDensity(density: Density) {
+type DensityVars = Record<string, string>;
+
+const BULWARK_DENSITY: Record<Density, DensityVars> = {
+  'extra-compact': {
+    '--list-item-height': 'auto',
+    '--density-item-py': '2px',
+    '--density-item-gap': '6px',
+    '--density-header-py': '4px',
+    '--density-card-p': '8px',
+    '--density-sidebar-py': '0px',
+  },
+  compact: {
+    '--list-item-height': 'auto',
+    '--density-item-py': '4px',
+    '--density-item-gap': '8px',
+    '--density-header-py': '6px',
+    '--density-card-p': '10px',
+    '--density-sidebar-py': '1px',
+  },
+  regular: {
+    '--list-item-height': '48px',
+    '--density-item-py': '12px',
+    '--density-item-gap': '12px',
+    '--density-header-py': '12px',
+    '--density-card-p': '16px',
+    '--density-sidebar-py': '4px',
+  },
+  comfortable: {
+    '--list-item-height': '64px',
+    '--density-item-py': '16px',
+    '--density-item-gap': '16px',
+    '--density-header-py': '16px',
+    '--density-card-p': '20px',
+    '--density-sidebar-py': '6px',
+  },
+};
+
+/**
+ * Gmail offers three row rhythms - Compact, Default, Comfortable, at roughly
+ * 32, 40 and 48 pixels - and this fork offers four. Rather than drop one of
+ * ours or leave the setting meaning something different under the skin, the
+ * four are laid over Gmail's scale: `compact`, `regular` and `comfortable`
+ * land on Gmail's three exactly, and `extra-compact` continues the series a
+ * step below, which Gmail has no name for but the geometry allows.
+ *
+ * Only the vertical rhythm is restated. Everything else a density touches -
+ * gaps, card padding, the sidebar's own row padding - keeps its Bulwark value,
+ * because the skin does not claim to reproduce Gmail's spacing everywhere, and
+ * a sidebar row is already pinned to 32px by the skin's own token.
+ */
+const GMAIL_DENSITY: Record<Density, DensityVars> = {
+  'extra-compact': { ...BULWARK_DENSITY['extra-compact'], '--list-item-height': '28px', '--density-item-py': '4px' },
+  compact: { ...BULWARK_DENSITY.compact, '--list-item-height': '32px', '--density-item-py': '6px' },
+  regular: { ...BULWARK_DENSITY.regular, '--list-item-height': '40px', '--density-item-py': '10px' },
+  comfortable: { ...BULWARK_DENSITY.comfortable, '--list-item-height': '48px', '--density-item-py': '14px' },
+};
+
+export function densityVarsFor(density: Density, skin: UiSkin): DensityVars {
+  return (skin === 'gmail' ? GMAIL_DENSITY : BULWARK_DENSITY)[density];
+}
+
+function applyDensity(density: Density, skin: UiSkin) {
   if (typeof document === 'undefined') return;
 
   const root = document.documentElement;
-
-  const densityValues = {
-    'extra-compact': {
-      '--list-item-height': 'auto',
-      '--density-item-py': '2px',
-      '--density-item-gap': '6px',
-      '--density-header-py': '4px',
-      '--density-card-p': '8px',
-      '--density-sidebar-py': '0px',
-    },
-    compact: {
-      '--list-item-height': 'auto',
-      '--density-item-py': '4px',
-      '--density-item-gap': '8px',
-      '--density-header-py': '6px',
-      '--density-card-p': '10px',
-      '--density-sidebar-py': '1px',
-    },
-    regular: {
-      '--list-item-height': '48px',
-      '--density-item-py': '12px',
-      '--density-item-gap': '12px',
-      '--density-header-py': '12px',
-      '--density-card-p': '16px',
-      '--density-sidebar-py': '4px',
-    },
-    comfortable: {
-      '--list-item-height': '64px',
-      '--density-item-py': '16px',
-      '--density-item-gap': '16px',
-      '--density-header-py': '16px',
-      '--density-card-p': '20px',
-      '--density-sidebar-py': '6px',
-    },
-  };
-
-  const values = densityValues[density];
-  for (const [prop, val] of Object.entries(values)) {
+  for (const [prop, val] of Object.entries(densityVarsFor(density, skin))) {
     root.style.setProperty(prop, val);
   }
 }
@@ -1461,9 +1499,13 @@ function applyDensity(density: Density) {
  * the `[data-skin="gmail"]` block in globals.css, so nothing has to re-render
  * for the shell to change shape.
  */
-function applyUiSkin(skin: UiSkin) {
+function applyUiSkin(skin: UiSkin, density: Density) {
   if (typeof document === 'undefined') return;
   document.documentElement.dataset.skin = skin;
+  // The row rhythm is a skin decision as much as a density one, and it is
+  // written as an inline custom property, which no stylesheet rule could
+  // override. Re-applying it here is what keeps the two in step.
+  applyDensity(density, skin);
 }
 
 function applyAnimations(enabled: boolean) {
@@ -1481,8 +1523,8 @@ function applyAnimations(enabled: boolean) {
 if (typeof window !== 'undefined') {
   const store = useSettingsStore.getState();
   applyFontSize(store.fontSize);
-  applyDensity(store.density);
-  applyUiSkin(store.uiSkin);
+  applyDensity(store.density, store.uiSkin);
+  applyUiSkin(store.uiSkin, store.density);
   applyAnimations(store.animationsEnabled);
 
   const triggerSync = () => {

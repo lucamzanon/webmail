@@ -135,6 +135,8 @@
     "show_all_tags": "Бүгдийг нь харуулах ({count})",
     "show_fewer_tags": "Бага харуулах",
     "folders": "Хавтас",
+    "show_more": "Илүү",
+    "show_fewer": "Бага",
     "shared": "Хуваалцсан",
     "mail": "Мэйл",
     "nav_label": "Навигаци",

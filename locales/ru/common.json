@@ -135,6 +135,8 @@
     "show_all_tags": "Показать все ({count})",
     "show_fewer_tags": "Показать меньше",
     "folders": "Папки",
+    "show_more": "Ещё",
+    "show_fewer": "Свернуть",
     "mail": "Почта",
     "nav_label": "Навигация",
     "add_app": "Приложения",

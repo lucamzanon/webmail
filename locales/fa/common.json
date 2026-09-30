@@ -135,6 +135,8 @@
     "show_all_tags": "نمایش همه ({count})",
     "show_fewer_tags": "نمایش کمتر",
     "folders": "پوشه‌ها",
+    "show_more": "بیشتر",
+    "show_fewer": "کمتر",
     "shared": "اشتراکی",
     "mail": "ایمیل",
     "nav_label": "ناوبری",

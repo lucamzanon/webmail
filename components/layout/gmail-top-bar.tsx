@@ -46,6 +46,16 @@ interface GmailTopBarProps {
   onInlineApp?: (appId: string, url: string, name: string) => void;
   onCloseInlineApp?: () => void;
   activeAppId?: string | null;
+  /** Opens the merged across-accounts inbox from the account popover. */
+  onSelectAllInboxes?: () => void;
+  allInboxesSelected?: boolean;
+  /**
+   * Receives the node under the search field that the advanced-filter panel is
+   * portalled into. Gmail drops that panel from the field itself; without this
+   * the panel would stay behind in the message-list column, two bars away from
+   * the button that opens it.
+   */
+  onFilterAnchorChange?: (node: HTMLDivElement | null) => void;
 }
 
 /**
@@ -70,6 +80,9 @@ export function GmailTopBar({
   onInlineApp,
   onCloseInlineApp,
   activeAppId,
+  onSelectAllInboxes,
+  allInboxesSelected = false,
+  onFilterAnchorChange,
 }: GmailTopBarProps) {
   const t = useTranslations("sidebar");
   const tSearch = useTranslations("advanced_search");
@@ -150,7 +163,7 @@ export function GmailTopBar({
       </div>
 
       {/* Search: left-anchored and capped, not centred - Gmail's own behaviour */}
-      <div className="gm-topbar-search flex items-center gap-1 flex-1 min-w-0 max-w-[720px]">
+      <div className="gm-topbar-search relative flex items-center gap-1 flex-1 min-w-0 max-w-[720px]">
         <SearchBox
           value={searchQuery}
           onChange={onSearchQueryChange}
@@ -180,6 +193,17 @@ export function GmailTopBar({
             </span>
           )}
         </button>
+
+        {/* Anchor for the advanced-filter panel: the search field's own box -
+            the wrapper less the 48px filter button and its 4px gap - so the
+            panel shares the field's leading edge and width. It only marks the
+            spot; the panel itself is drawn at the end of <body>. */}
+        <div
+          ref={onFilterAnchorChange}
+          aria-hidden
+          data-skin-filter-anchor=""
+          className="pointer-events-none absolute start-0 end-[52px] top-full h-0"
+        />
       </div>
 
       {/* Spacer keeps the right cluster pinned while search stays left */}
@@ -299,7 +323,12 @@ export function GmailTopBar({
           )}
         </div>
 
-        <AccountSwitcher variant="header" className="ms-1" />
+        <AccountSwitcher
+          variant="header"
+          className="ms-1"
+          onSelectAllInboxes={onSelectAllInboxes}
+          allInboxesSelected={allInboxesSelected}
+        />
       </div>
     </header>
   );

@@ -934,11 +934,14 @@ option {
 [data-skin="gmail"] {
   --skin-topbar-h: 64px;
   --skin-rail-w: 72px;
+  --skin-rail-peek-w: 256px;
   --skin-nav-row-h: 32px;
   --skin-nav-radius: 9999px;
   --skin-compose-h: 56px;
   --skin-search-h: 48px;
   --skin-search-radius: 8px;
+  --skin-popover-w: 352px;
+  --skin-popover-radius: 28px;
 }
 
 /* Search: a filled 48px field that lifts onto a card while focused, rather
@@ -988,4 +991,28 @@ option {
 [data-skin="gmail"] [data-skin-compose] {
   height: var(--skin-compose-h);
   border-radius: var(--skin-nav-radius);
+}
+
+/* The account popover: Gmail's wide card with its very round corner, rather
+   than the narrow menu the rail and the sidebar switchers drop. */
+[data-skin="gmail"] [data-skin-account-popover] {
+  width: var(--skin-popover-w);
+  border-radius: var(--skin-popover-radius);
+}
+
+/* The advanced filters drop from the search field with a small gap and take
+   its corner, so the two read as one control. Position and width come from
+   the field's own box, measured by FilterPanelHost. */
+[data-skin="gmail"] [data-skin-filter-panel] {
+  border-radius: var(--skin-search-radius);
+}
+
+/* The collapsed rail's hover peek. Only on desktop: below that breakpoint the
+   sidebar is already a drawer, opened by a tap rather than by a pointer that
+   does not exist. The width beats Tailwind's own `lg:w-full` on specificity,
+   which is what keeps the floating panel from filling the 72px column. */
+@media (min-width: 1024px) {
+  [data-skin="gmail"] [data-skin-rail-peek] {
+    width: var(--skin-rail-peek-w);
+  }
 }

@@ -135,6 +135,8 @@
     "show_all_tags": "إظهار الكل ({count})",
     "show_fewer_tags": "إظهار أقل",
     "folders": "المجلدات",
+    "show_more": "المزيد",
+    "show_fewer": "أقل",
     "shared": "مشترك",
     "mail": "البريد",
     "nav_label": "التنقل",

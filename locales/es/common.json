@@ -135,6 +135,8 @@
     "show_all_tags": "Mostrar todo ({count})",
     "show_fewer_tags": "Mostrar menos",
     "folders": "Carpetas",
+    "show_more": "Más",
+    "show_fewer": "Menos",
     "mail": "Correo",
     "nav_label": "Navegación",
     "add_app": "Apps",

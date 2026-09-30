@@ -30,6 +30,9 @@ interface MobileHeaderProps {
   onClearSearch?: () => void;
   /** Whether a query is currently applied, which reveals the clear button. */
   searchActive?: boolean;
+  /** Gmail skin: opens the merged across-accounts inbox from the avatar's popover. */
+  onSelectAllInboxes?: () => void;
+  allInboxesSelected?: boolean;
 }
 
 export function MobileHeader({
@@ -44,6 +47,8 @@ export function MobileHeader({
   searchPlaceholder,
   onClearSearch,
   searchActive = false,
+  onSelectAllInboxes,
+  allInboxesSelected = false,
 }: MobileHeaderProps) {
   const t = useTranslations('sidebar');
   const { toggleSidebar, goBack, sidebarOpen } = useUIStore();
@@ -165,7 +170,11 @@ export function MobileHeader({
             opening the drawer. Last in this group so it sits on the far
             edge — opposite the menu button, and mirrored under RTL because
             the header is laid out with flex rather than fixed sides. */}
-        <AccountSwitcher variant="header" />
+        <AccountSwitcher
+          variant="header"
+          onSelectAllInboxes={onSelectAllInboxes}
+          allInboxesSelected={allInboxesSelected}
+        />
       </div>
     </header>
   );
