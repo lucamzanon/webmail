@@ -37,6 +37,12 @@ interface ResolvedTarget {
   loginId: string;
   /** See StalwartCredentials.trusted - false routes through the guarded fetch. */
   trusted: boolean;
+  /**
+   * Cookie slot of the login that owns the account. Handed back so a click
+   * on the notification opens the message in that login: the worker knows
+   * only the JMAP account id, which can repeat across servers.
+   */
+  slot?: number;
 }
 
 // When the SW passes ?accountId=, we need the slot whose JMAP session owns
@@ -79,6 +85,7 @@ async function resolveTargetForAccount(accountId: string): Promise<ResolvedTarge
             accountName: session.accounts?.[accountId]?.name ?? '',
             loginId: ctx.username ? generateAccountId(ctx.username, serverUrl) : '',
             trusted,
+            slot,
           };
         } catch {
           return null;
@@ -356,6 +363,7 @@ export async function GET(request: NextRequest) {
       emails,
       unreadTotal,
       account: { id: accountId, name: accountName, loginId },
+      ...(target.slot !== undefined ? { slot: target.slot } : {}),
     }, {
       headers: {
         // SW already gates on its own logic - don't let push events get

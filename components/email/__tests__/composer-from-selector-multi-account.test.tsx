@@ -50,8 +50,8 @@ const { identityGroups } = vi.hoisted(() => ({
 }));
 const ALL_GROUPS = identityGroups.current;
 
-vi.mock('@/hooks/use-multi-account-identities', () => ({
-  useMultiAccountIdentities: () => ({
+vi.mock('@/hooks/use-pro-multi-account-identities', () => ({
+  useProMultiAccountIdentities: () => ({
     enabled: true,
     groups: identityGroups.current,
     allIdentities: identityGroups.current.flatMap((g) => g.identities),

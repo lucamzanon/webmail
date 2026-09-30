@@ -114,6 +114,13 @@ describe('push preview route account resolution', () => {
     expect(mailboxQuery?.methodCalls[0][1].accountId).toBe('g');
   });
 
+  it('names the login (cookie slot) the account belongs to', async () => {
+    // The worker only knows the JMAP account id, which can repeat across
+    // servers; the click must open the message in this login.
+    const { body } = await callRoute('a');
+    expect(body.slot).toBe(0);
+  });
+
   it('rejects an account the session does not know', async () => {
     const { status } = await callRoute('stranger');
     expect(status).toBe(401);
@@ -159,7 +166,7 @@ describe('push preview JMAP failures', () => {
       ] }));
     expect(await callRoute('a')).toEqual({
       status: 200,
-      body: { email: null, emails: [], unreadTotal: 0, account: { id: 'a', name: 'me@example.com', loginId: 'me@example.com@mail.example.com' } },
+      body: { email: null, emails: [], unreadTotal: 0, account: { id: 'a', name: 'me@example.com', loginId: 'me@example.com@mail.example.com' }, slot: 0 },
     });
   });
 });
@@ -180,7 +187,7 @@ it('previews a delivered message outside an empty Inbox', async () => {
       email: { id: 'filed', threadId: 't2' },
       emails: [{ id: 'filed', threadId: 't2' }],
       unreadTotal: 1,
-      account: { id: 'a', name: 'me@example.com', loginId: 'me@example.com@mail.example.com' },
+      account: { id: 'a', name: 'me@example.com', loginId: 'me@example.com@mail.example.com' }, slot: 0,
     },
   });
 });

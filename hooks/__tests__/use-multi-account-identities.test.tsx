@@ -44,7 +44,7 @@ vi.mock('@/stores/identity-store', () => {
   return { useIdentityStore: hook };
 });
 
-import { useMultiAccountIdentities, stripCrossAccountIdentityPrefix } from '@/hooks/use-multi-account-identities';
+import { useProMultiAccountIdentities, stripCrossAccountIdentityPrefix } from '@/hooks/use-pro-multi-account-identities';
 
 beforeEach(() => {
   accountState.accounts = [
@@ -59,9 +59,9 @@ beforeEach(() => {
   identityState.identities = [{ id: 'i-1', email: 'me@work.example', name: 'Me' }];
 });
 
-describe('useMultiAccountIdentities', () => {
+describe('useProMultiAccountIdentities', () => {
   it('aggregates every connected account outside the Pro shell', async () => {
-    const { result } = renderHook(() => useMultiAccountIdentities());
+    const { result } = renderHook(() => useProMultiAccountIdentities());
 
     expect(result.current.enabled).toBe(true);
     await waitFor(() => expect(result.current.groups).toHaveLength(2));
@@ -76,7 +76,7 @@ describe('useMultiAccountIdentities', () => {
   it('stays off with a single connected account', () => {
     accountState.accounts = [{ id: 'local-1', isConnected: true, label: 'Work' }];
 
-    const { result } = renderHook(() => useMultiAccountIdentities());
+    const { result } = renderHook(() => useProMultiAccountIdentities());
 
     expect(result.current.enabled).toBe(false);
     expect(result.current.groups).toEqual([]);

@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Square,
   Trash2,
-} from "lucide-react";
+} from "@/components/icons";
 import { useTranslations } from "next-intl";
 import { useAuthStore } from "@/stores/auth-store";
 import { useEmailStore } from "@/stores/email-store";

@@ -5,14 +5,15 @@ import {
   BookUser,
   Calendar,
   Filter,
-  Grid3x3,
   HardDrive,
   Keyboard,
   Mail,
   Menu,
   Settings,
-} from "lucide-react";
-import { icons as lucideIcons, type LucideIcon } from "lucide-react";
+  iconForName,
+  type AppIcon as AppIconType,
+} from "@/components/icons";
+import { IconGridDots as Grid3x3 } from "@tabler/icons-react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useAuthStore } from "@/stores/auth-store";
@@ -106,7 +107,7 @@ export function GmailTopBar({
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [appsOpen, appsMenuRef]);
 
-  const apps: Array<{ id: string; icon: LucideIcon; label: string; href: string }> = [
+  const apps: Array<{ id: string; icon: AppIconType; label: string; href: string }> = [
     { id: "mail", icon: Mail, label: t("mail"), href: "/" },
     ...(supportsCalendar && calendarEnabled
       ? [{ id: "calendar", icon: Calendar, label: t("calendar"), href: "/calendar" }]
@@ -254,9 +255,7 @@ export function GmailTopBar({
                   );
                 })}
                 {sidebarApps.map((app) => {
-                  const AppIcon = lucideIcons[app.icon as keyof typeof lucideIcons] as
-                    | LucideIcon
-                    | undefined;
+                  const AppIcon = iconForName(app.icon);
                   return (
                     <button
                       key={app.id}
