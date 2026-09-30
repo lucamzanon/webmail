@@ -115,6 +115,7 @@
     "unified_archive": "Všechny archivy",
     "unified_junk": "Všechen spam",
     "all_accounts": "Všechny účty",
+    "all_accounts_loading": "Načítání účtů: {loaded} z {total}",
     "unified_mailbox": "Sjednocená schránka",
     "expand": "Rozbalit",
     "collapse": "Sbalit",

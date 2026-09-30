@@ -139,6 +139,7 @@
     "unified_archive": "הכל ארכיון",
     "unified_junk": "הכל דואר זבל",
     "all_accounts": "כל החשבונות",
+    "all_accounts_loading": "טוען חשבונות: {loaded} מתוך {total}",
     "shared": "משותף",
     "scheduled": "מתוכננים",
     "unified_all_unread": "הכל שלא נקראו",

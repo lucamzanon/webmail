@@ -115,6 +115,7 @@
     "unified_archive": "모든 보관함",
     "unified_junk": "모든 스팸함",
     "all_accounts": "모든 계정",
+    "all_accounts_loading": "계정 불러오는 중: {total}개 중 {loaded}개",
     "unified_mailbox": "통합 메일함",
     "expand": "펼치기",
     "collapse": "접기",

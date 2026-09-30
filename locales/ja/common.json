@@ -115,6 +115,7 @@
     "unified_archive": "すべてのアーカイブ",
     "unified_junk": "すべての迷惑メール",
     "all_accounts": "すべてのアカウント",
+    "all_accounts_loading": "アカウントを読み込み中: {total} 件中 {loaded} 件",
     "unified_mailbox": "統合メールボックス",
     "expand": "展開",
     "collapse": "折りたたむ",

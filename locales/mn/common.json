@@ -115,6 +115,7 @@
     "unified_archive": "Бүх архив",
     "unified_junk": "Бүх хог",
     "all_accounts": "Бүх дансууд",
+    "all_accounts_loading": "Бүртгэлүүдийг ачаалж байна: {total}-аас {loaded}",
     "unified_mailbox": "Нэгдсэн шуудангийн хайрцаг",
     "expand": "Өргөтгөх",
     "collapse": "Нуналт",

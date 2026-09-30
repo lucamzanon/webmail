@@ -115,6 +115,7 @@
     "unified_archive": "Tüm Arşiv",
     "unified_junk": "Tüm Önemsiz",
     "all_accounts": "Tüm Hesaplar",
+    "all_accounts_loading": "Hesaplar yükleniyor: {loaded}/{total}",
     "unified_mailbox": "Birleşik Posta Kutusu",
     "expand": "Genişlet",
     "collapse": "Daralt",

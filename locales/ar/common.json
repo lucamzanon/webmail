@@ -115,6 +115,7 @@
     "unified_archive": "كل الأرشيف",
     "unified_junk": "كل البريد المزعج",
     "all_accounts": "كل الحسابات",
+    "all_accounts_loading": "جارٍ تحميل الحسابات: {loaded} من {total}",
     "unified_mailbox": "صندوق البريد الموحّد",
     "expand": "توسيع",
     "collapse": "طي",

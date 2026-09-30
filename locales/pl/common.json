@@ -115,6 +115,7 @@
     "unified_archive": "Wszystkie archiwa",
     "unified_junk": "Wszystkie spam",
     "all_accounts": "Wszystkie konta",
+    "all_accounts_loading": "Wczytywanie kont: {loaded} z {total}",
     "unified_mailbox": "Wspólna skrzynka",
     "expand": "Rozwiń",
     "collapse": "Zwiń",

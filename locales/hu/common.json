@@ -115,6 +115,7 @@
     "unified_archive": "Összes archívum",
     "unified_junk": "Összes spam",
     "all_accounts": "Minden fiók",
+    "all_accounts_loading": "Fiókok betöltése: {loaded} / {total}",
     "unified_mailbox": "Egységes postafiók",
     "expand": "Kibontás",
     "collapse": "Összecsukás",

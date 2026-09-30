@@ -115,6 +115,7 @@
     "unified_archive": "Все архивы",
     "unified_junk": "Весь спам",
     "all_accounts": "Все аккаунты",
+    "all_accounts_loading": "Загрузка аккаунтов: {loaded} из {total}",
     "unified_mailbox": "Общий почтовый ящик",
     "expand": "Развернуть",
     "collapse": "Свернуть",

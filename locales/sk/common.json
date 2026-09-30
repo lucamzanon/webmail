@@ -116,6 +116,7 @@
     "unified_archive": "Všetky archívy",
     "unified_junk": "Všetok spam",
     "all_accounts": "Všetky účty",
+    "all_accounts_loading": "Načítavajú sa účty: {loaded} z {total}",
     "expand": "Rozbaliť",
     "collapse": "Zbaliť",
     "expand_tooltip": "Rozbaliť",

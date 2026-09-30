@@ -115,6 +115,7 @@
     "unified_archive": "Alle arkiver",
     "unified_junk": "Alt spam",
     "all_accounts": "Alle konti",
+    "all_accounts_loading": "Indlæser konti: {loaded} af {total}",
     "unified_mailbox": "Samlet postkasse",
     "expand": "Udvid",
     "collapse": "Skjul",

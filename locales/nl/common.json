@@ -115,6 +115,7 @@
     "unified_archive": "Alle archieven",
     "unified_junk": "Alle spam",
     "all_accounts": "Alle accounts",
+    "all_accounts_loading": "Accounts laden: {loaded} van {total}",
     "unified_mailbox": "Gecombineerd postvak",
     "expand": "Uitklappen",
     "collapse": "Inklappen",

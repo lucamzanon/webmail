@@ -115,6 +115,7 @@
     "unified_archive": "All Archive",
     "unified_junk": "All Junk",
     "all_accounts": "All Accounts",
+    "all_accounts_loading": "Loading accounts: {loaded} of {total}",
     "unified_mailbox": "Unified Mailbox",
     "expand": "Expand",
     "collapse": "Collapse",

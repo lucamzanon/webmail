@@ -115,6 +115,7 @@
     "unified_archive": "Усі архіви",
     "unified_junk": "Весь спам",
     "all_accounts": "Усі облікові записи",
+    "all_accounts_loading": "Завантаження облікових записів: {loaded} з {total}",
     "unified_mailbox": "Спільна поштова скринька",
     "expand": "Розгорнути",
     "collapse": "Згорнути",

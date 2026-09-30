@@ -115,6 +115,7 @@
     "unified_archive": "Todos os arquivos",
     "unified_junk": "Todo o spam",
     "all_accounts": "Todas as contas",
+    "all_accounts_loading": "A carregar contas: {loaded} de {total}",
     "unified_mailbox": "Caixa de correio unificada",
     "expand": "Expandir",
     "collapse": "Recolher",

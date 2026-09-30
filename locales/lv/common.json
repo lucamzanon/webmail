@@ -115,6 +115,7 @@
     "unified_archive": "Visi arhīvi",
     "unified_junk": "Viss mēstules",
     "all_accounts": "Visi konti",
+    "all_accounts_loading": "Ielādē kontus: {loaded} no {total}",
     "unified_mailbox": "Apvienotā pastkaste",
     "expand": "Izvērst",
     "collapse": "Sairt",

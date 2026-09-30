@@ -115,6 +115,7 @@
     "unified_archive": "Tot l'arxiu",
     "unified_junk": "Tot el correu brossa",
     "all_accounts": "Tots els comptes",
+    "all_accounts_loading": "Carregant comptes: {loaded} de {total}",
     "unified_mailbox": "Bústia unificada",
     "expand": "Desplega",
     "collapse": "Replega",

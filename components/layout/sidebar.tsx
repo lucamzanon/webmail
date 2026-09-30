@@ -63,6 +63,7 @@ import { MAILBOX_DRAG_MIME } from "@/components/pro/pro-shell-drop";
 import { useTagDrop } from "@/hooks/use-tag-drop";
 import { useUIStore } from "@/stores/ui-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { unifiedLoadProgress } from "@/lib/unified-mailbox";
 import { useVacationStore } from "@/stores/vacation-store";
 import { useSettingsStore, getKeywordVisibility } from "@/stores/settings-store";
 import { useEmailStore } from "@/stores/email-store";
@@ -416,6 +417,7 @@ function SidebarSectionHeader({
   sub,
   testId,
   onContextMenu,
+  status,
 }: {
   label: string;
   expanded: boolean;
@@ -428,6 +430,8 @@ function SidebarSectionHeader({
   sub?: boolean;
   testId?: string;
   onContextMenu?: (event: React.MouseEvent) => void;
+  /** A short note after the label, e.g. how many accounts have loaded. */
+  status?: ReactNode;
 }) {
   if (isCollapsed) {
     return first ? null : <div className="h-px bg-border/50 mx-2 my-2" aria-hidden />;
@@ -461,6 +465,7 @@ function SidebarSectionHeader({
       <span className={cn(textClass, icon ? "ms-1.5" : "ms-1.5")}>
         {label}
       </span>
+      {status}
       {onSettings && (
         <span
           role="button"
@@ -934,6 +939,16 @@ export function Sidebar({
     (multiAccountMode || enableUnifiedMailbox) &&
     (crossAccountActive || (includeGroupInUnified && hasGroupInboxes) || anyCrossViewEnabled);
   const { unifiedCounts } = useEmailStore();
+  // While the other logins are still reconnecting after a load, the unified
+  // counts cover only the ones already back: say how many, so a partial total
+  // is not read as the whole. Gone as soon as the restore finishes, whatever
+  // became of the logins that did not make it.
+  const unifiedScope = useEmailStore((s) => s.unifiedScope);
+  const restoringAccounts = useAuthStore((s) => s.restoringAccounts);
+  const registeredAccounts = useAccountStore((s) => s.accounts);
+  const unifiedProgress = useMemo(() => unifiedLoadProgress({
+    crossAccountActive, restoring: restoringAccounts, scope: unifiedScope, accounts: registeredAccounts,
+  }), [crossAccountActive, restoringAccounts, registeredAccounts, unifiedScope]);
   const t = useTranslations('sidebar');
 
   useEffect(() => {
@@ -1317,6 +1332,16 @@ export function Sidebar({
               onToggle={toggleUnified}
               isCollapsed={isCollapsed}
               first
+              status={unifiedProgress && (
+                <span
+                  className="ms-2 text-xs font-normal tabular-nums text-muted-foreground animate-pulse"
+                  aria-label={t("all_accounts_loading", unifiedProgress)}
+                  title={t("all_accounts_loading", unifiedProgress)}
+                  data-testid="unified-accounts-loading"
+                >
+                  {unifiedProgress.loaded}/{unifiedProgress.total}
+                </span>
+              )}
             />
             {((unifiedExpanded && !isCollapsed) || isCollapsed) && (
               <>

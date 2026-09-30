@@ -115,6 +115,7 @@
     "unified_archive": "所有归档",
     "unified_junk": "所有垃圾邮件",
     "all_accounts": "所有账户",
+    "all_accounts_loading": "正在加载账户：{loaded}/{total}",
     "unified_mailbox": "统一邮箱",
     "expand": "展开",
     "collapse": "收起",

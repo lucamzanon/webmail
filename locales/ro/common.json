@@ -115,6 +115,7 @@
     "unified_archive": "Arhivă completă",
     "unified_junk": "Toate mesajele nedorite",
     "all_accounts": "Toate conturile",
+    "all_accounts_loading": "Se încarcă conturile: {loaded} din {total}",
     "unified_mailbox": "Căsuță poștală unificată",
     "expand": "Extindeți",
     "collapse": "Reduceți",

@@ -73,6 +73,12 @@ interface AuthState {
    * (push notifications) re-run over the now-complete client set.
    */
   connectedAccountsRevision: number;
+  /**
+   * True while the logins other than the one on screen are still being
+   * restored after a load, so views that span every login (the unified
+   * mailbox) can say they are not complete yet.
+   */
+  restoringAccounts: boolean;
 
   login: (serverUrl: string, username: string, password: string, totp?: string, rememberMe?: boolean) => Promise<boolean>;
   loginWithOAuth: (serverUrl: string, code: string, codeVerifier: string, redirectUri: string, serverId?: string) => Promise<boolean>;
@@ -1224,6 +1230,7 @@ export const useAuthStore = create<AuthState>()(
       activeAccountId: null,
       isDemoMode: false,
       connectedAccountsRevision: 0,
+      restoringAccounts: false,
 
       login: async (serverUrl, typedUsername, password, totp, rememberMe) => {
         set({ isLoading: true, error: null, isRateLimited: false, rateLimitUntil: null });
@@ -2618,8 +2625,9 @@ export const useAuthStore = create<AuthState>()(
 
           if (clients.has(targetId)) {
             if (otherAccounts.length > 0) {
+              set({ restoringAccounts: true });
               void restoreRemaining().then(() => {
-                set((state) => ({ connectedAccountsRevision: state.connectedAccountsRevision + 1 }));
+                set((state) => ({ connectedAccountsRevision: state.connectedAccountsRevision + 1, restoringAccounts: false }));
               });
             }
           } else {

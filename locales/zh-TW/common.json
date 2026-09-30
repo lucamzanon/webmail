@@ -115,6 +115,7 @@
     "unified_archive": "所有封存郵件",
     "unified_junk": "所有垃圾郵件",
     "all_accounts": "所有帳號",
+    "all_accounts_loading": "正在載入帳號：{loaded}/{total}",
     "unified_mailbox": "整合信箱",
     "expand": "展開",
     "collapse": "收合",

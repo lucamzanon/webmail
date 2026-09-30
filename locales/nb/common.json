@@ -115,6 +115,7 @@
     "unified_archive": "Alle arkiver",
     "unified_junk": "All søppelpost",
     "all_accounts": "Alle kontoer",
+    "all_accounts_loading": "Laster inn kontoer: {loaded} av {total}",
     "unified_mailbox": "Samlet postkasse",
     "expand": "Utvid",
     "collapse": "Fold sammen",
