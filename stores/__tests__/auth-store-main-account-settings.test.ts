@@ -28,6 +28,11 @@ vi.mock('@/lib/jmap/client', () => {
   class RateLimitError extends Error {}
   return { JMAPClient, RateLimitError };
 });
+// Settings sync only needs to be switched on; the full config shape is not the point here.
+vi.mock('@/hooks/use-config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-config')>()),
+  fetchConfig: async () => ({ settingsSyncEnabled: true }),
+}));
 vi.mock('@/lib/stalwart/principal', () => ({ fetchPrincipalDisplayName: async () => null }));
 
 import { useAuthStore } from '@/stores/auth-store';
@@ -72,11 +77,13 @@ async function switchToB(fromMain: boolean) {
   useAuthStore.setState({ isAuthenticated: true, activeAccountId: A.id, client: null });
   loads.length = 0;
   await useAuthStore.getState().switchAccount(B.id);
-  await sleep(50);
   expect(useAuthStore.getState().activeAccountId).toBe(B.id);
+  // Settings load after the config fetch, off the switch's own promise.
+  await vi.waitFor(() => expect(loads.length).toBeGreaterThan(0), { timeout: 10000 });
+  await sleep(50);
   posts.length = 0;
   useSettingsStore.getState().updateSetting('fontSize', fromMain ? 'large' as never : 'small' as never);
-  await sleep(2300);
+  await vi.waitFor(() => expect(posts.length).toBeGreaterThan(0), { timeout: 10000 });
 }
 
 it('loads and saves the main account\'s settings whichever account is active, when asked to', async () => {
