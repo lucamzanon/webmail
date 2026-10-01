@@ -524,7 +524,8 @@ export interface IJMAPClient {
    * (JMAP `Email/copy` + destroy-original). Used for delegated/shared folders,
    * where the two accounts share a client but a client can't stage a blob in a
    * delegated account (so the blob copy+import path doesn't work). Returns the
-   * new email id in the destination account.
+   * new email id in the destination account. `keepOriginal` makes it a plain
+   * copy: the source message is left where it is.
    */
-  copyEmailAcrossAccounts(emailId: string, fromAccountId: string, toAccountId: string, destMailboxId: string): Promise<string>;
+  copyEmailAcrossAccounts(emailId: string, fromAccountId: string, toAccountId: string, destMailboxId: string, options?: { keepOriginal?: boolean }): Promise<string>;
 }

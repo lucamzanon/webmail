@@ -7,7 +7,7 @@ import { emailKeyFor } from '@/lib/thread-utils';
 import type { LoadListAttachments } from "@/lib/list-attachments";
 import { listRowShowsChips } from "./attachment-chips";
 import { listVerificationCode } from "@/lib/verification-code";
-import { EmailContextMenu } from "./email-context-menu";
+import { EmailContextMenu, type CopyTargetAccount } from "./email-context-menu";
 import { cn, cleanPreview } from "@/lib/utils";
 import { Trash2, Mail, MailX, MailOpen, Loader2, SearchX, AlertTriangle, CalendarClock, ShieldCheck } from "@/components/icons";
 import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from "react";
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useEmailStore, ArchiveMailboxNotFoundError } from "@/stores/email-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { useAccountStore } from "@/stores/account-store";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useEffectiveMailLayout } from "@/hooks/use-effective-mail-layout";
 import { useUIStore } from "@/stores/ui-store";
@@ -201,6 +202,35 @@ export function EmailList({
     return newestOther ? [newestOther] : undefined;
   }, [contextMenuEmail, selectedEmailKeys, emails, threadGroups, threadEmailsCache]);
   const { dialogProps: confirmDialogProps, confirm: confirmDialog } = useConfirmDialog();
+
+  // "Copy to" lists the folders of the other connected accounts. Only with
+  // more than one account connected; the menu's own account is left out.
+  const accounts = useAccountStore((state) => state.accounts);
+  const accountMailboxes = useEmailStore((state) => state.accountMailboxes);
+  const fetchAccountMailboxes = useEmailStore((state) => state.fetchAccountMailboxes);
+  const copyEmailsToAccount = useEmailStore((state) => state.copyEmailsToAccount);
+  const copySourceLogin = contextMenuEmail
+    ? contextMenuEmail.sourceClientAccountId ?? viewingAccountId ?? activeAccountId
+    : null;
+  const copyAccounts = useMemo(() => {
+    if (!contextMenu.isOpen) return [];
+    const connected = useAuthStore.getState().getAllConnectedClients();
+    if (connected.size < 2) return [];
+    return accounts.filter((account) => account.id !== copySourceLogin && connected.has(account.id));
+  }, [contextMenu.isOpen, accounts, copySourceLogin]);
+  useEffect(() => {
+    for (const account of copyAccounts) {
+      if (accountMailboxes[account.id]) continue;
+      const accountClient = useAuthStore.getState().getClientForAccount(account.id);
+      if (accountClient) void fetchAccountMailboxes(accountClient, account.id);
+    }
+  }, [copyAccounts, accountMailboxes, fetchAccountMailboxes]);
+  const copyTargets = useMemo<CopyTargetAccount[]>(
+    () => copyAccounts
+      .filter((account) => accountMailboxes[account.id])
+      .map((account) => ({ accountId: account.id, label: account.label || account.email || account.id, mailboxes: accountMailboxes[account.id] })),
+    [copyAccounts, accountMailboxes],
+  );
 
   const [isProcessing, setIsProcessing] = useState(false);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -754,6 +784,17 @@ export function EmailList({
           onEditDraft={() => onEditDraft?.(contextMenuEmail!)}
           onCancelScheduledForEdit={onCancelScheduledForEdit ? () => onCancelScheduledForEdit(contextMenuEmail!) : undefined}
           onRescheduleScheduled={onRescheduleScheduled ? () => onRescheduleScheduled(contextMenuEmail!) : undefined}
+          copyTargets={copyTargets}
+          onCopyToAccount={async (accountId, mailboxId) => {
+            const ids = selectedEmailIds.has(contextMenuEmail!.id) && selectedEmailIds.size > 1
+              ? Array.from(selectedEmailIds)
+              : [contextMenuEmail!.id];
+            const target = accountMailboxes[accountId]?.find((mb) => mb.id === mailboxId);
+            await runBatchEmailAction(() => copyEmailsToAccount(ids, accountId, target?.originalId ?? mailboxId), {
+              success: tNotifications('emails_copied', { count: ids.length }),
+              error: tNotifications('copy_failed'),
+            });
+          }}
           onBatchMarkAsRead={(read) => client && batchMarkAsRead(client, read)}
           onBatchDelete={async () => {
             if (!client) return;

@@ -29,6 +29,13 @@ describe('copyEmailAcrossAccounts', () => {
     expect(calls.find(([m]) => m === 'Email/set')![1]).toEqual({ accountId: 'me', destroy: ['m1'] });
   });
 
+  it('keeps the source when asked for a plain copy', async () => {
+    const { client, calls } = clientWithCopyResult({ created: { c: { id: 'new1' } } });
+    await expect(client.copyEmailAcrossAccounts('m1', 'me', 'grp', 'inbox', { keepOriginal: true })).resolves.toBe('new1');
+    expect(calls.some(([m]) => m === 'Email/copy')).toBe(true);
+    expect(calls.some(([m]) => m === 'Email/set')).toBe(false);
+  });
+
   it('keeps the source when the copy fails', async () => {
     const { client, calls } = clientWithCopyResult({ notCreated: { c: { type: 'overQuota' } } });
     await expect(client.copyEmailAcrossAccounts('m1', 'me', 'grp', 'inbox')).rejects.toThrow('overQuota');

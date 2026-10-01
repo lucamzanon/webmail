@@ -288,6 +288,8 @@ interface EmailStore {
    * emails live in a delegated/shared mailbox accessed through the source
    * client, the copy/delete must target the owner's JMAP account rather than
    * the source client's primary one.
+   * `options.keepOriginal` turns the move into a copy: the originals stay in
+   * place and in the current view.
    */
   crossAccountMoveEmails: (
     emailIdsBySource: Map<string, string[]>,
@@ -295,7 +297,16 @@ interface EmailStore {
     destMailboxId: string,
     destJmapAccountId?: string,
     sourceJmapAccountId?: string,
+    options?: { keepOriginal?: boolean },
   ) => Promise<void>;
+  /**
+   * Copy emails into a folder of another connected account, keeping the
+   * originals. `destAccountId` is the destination login (AccountEntry.id) and
+   * `destMailboxId` the raw JMAP id of one of its own folders. Emails are
+   * grouped by the login and JMAP account they live in, then copied through
+   * crossAccountMoveEmails with `keepOriginal`.
+   */
+  copyEmailsToAccount: (emailIds: string[], destAccountId: string, destMailboxId: string) => Promise<void>;
   searchEmails: (client: IJMAPClient, query: string) => Promise<void>;
   advancedSearch: (client: IJMAPClient) => Promise<void>;
   setSearchFilters: (filters: Partial<SearchFilters>) => void;
@@ -2897,8 +2908,9 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
     }
   },
 
-  crossAccountMoveEmails: async (emailIdsBySource, destAccountId, destMailboxId, destJmapAccountId, sourceJmapAccountId) => {
+  crossAccountMoveEmails: async (emailIdsBySource, destAccountId, destMailboxId, destJmapAccountId, sourceJmapAccountId, options) => {
     if (emailIdsBySource.size === 0) return;
+    const keepOriginal = options?.keepOriginal === true;
     set({ isLoading: true, error: null });
     try {
       const destClient = useAuthStore.getState().getClientForAccount(destAccountId);
@@ -2935,6 +2947,7 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
                 sourceJmapAccountId ?? sourceClient.getAccountId(),
                 destJmapAccountId ?? destClient.getAccountId(),
                 destMailboxId,
+                keepOriginal ? { keepOriginal } : undefined,
               );
               return emailId;
             }
@@ -2948,7 +2961,7 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
             const blob = await sourceClient.fetchBlob(full.blobId, undefined, undefined, sourceJmapAccountId);
             const keywords: Record<string, boolean> = { ...(full.keywords ?? {}) };
             await destClient.importRawEmail(blob, { [destMailboxId]: true }, keywords, destJmapAccountId);
-            await sourceClient.deleteEmail(emailId, sourceJmapAccountId);
+            if (!keepOriginal) await sourceClient.deleteEmail(emailId, sourceJmapAccountId);
             return emailId;
           }),
         );
@@ -2968,9 +2981,11 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
       }
 
       // Drop the moved emails from the current view and clear stale selection
-      // entries. Counter accuracy comes from the mailbox refresh below.
+      // entries. Counter accuracy comes from the mailbox refresh below. A copy
+      // leaves the view and the selection as they are.
       const movedSet = new Set(movedIds);
-      set((state) => ({
+      if (keepOriginal) set({ isLoading: false });
+      else set((state) => ({
         emails: state.emails.filter((e) => !movedSet.has(e.id)),
         selectedEmail:
           state.selectedEmail && movedSet.has(state.selectedEmail.id)
@@ -2987,7 +3002,7 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
       // Refresh mailbox folder lists/counters for every account we touched.
       // Background-only so the move feels instant - counters will catch up.
       const activeAccountId = useAuthStore.getState().activeAccountId;
-      const touched = new Set<string>([destAccountId, ...emailIdsBySource.keys()]);
+      const touched = new Set<string>(keepOriginal ? [destAccountId] : [destAccountId, ...emailIdsBySource.keys()]);
       for (const acctId of touched) {
         const c = useAuthStore.getState().getClientForAccount(acctId);
         if (!c) continue;
@@ -3000,10 +3015,11 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
 
       if (failures.length > 0) {
         const first = failures[0];
+        const verb = keepOriginal ? 'copy' : 'move';
         throw new Error(
           failures.length === 1
-            ? `Failed to move email: ${first.error}`
-            : `Failed to move ${failures.length} email(s); first error: ${first.error}`,
+            ? `Failed to ${verb} email: ${first.error}`
+            : `Failed to ${verb} ${failures.length} email(s); first error: ${first.error}`,
         );
       }
     } catch (error) {
@@ -3015,6 +3031,52 @@ export const useEmailStore = create<EmailStore>((set, get) => ({
             : 'Failed to move emails between accounts',
       });
       throw error;
+    }
+  },
+
+  copyEmailsToAccount: async (emailIds, destAccountId, destMailboxId) => {
+    const state = get();
+    const auth = useAuthStore.getState();
+    const viewLogin = state.viewingAccountId ?? auth.activeAccountId;
+    const currentMailbox = resolveActionMailboxes().find((mb) => mb.id === state.selectedMailbox);
+    // One group per (login, JMAP account): crossAccountMoveEmails takes a
+    // single source JMAP account per call.
+    const groups = new Map<string, { login: string; jmapAccountId?: string; ids: string[] }>();
+    for (const id of emailIds) {
+      const email = state.emails.find((e) => e.id === id)
+        ?? (state.selectedEmail?.id === id ? state.selectedEmail : undefined);
+      // Aggregate views stamp each email with the login that reaches it and
+      // its owning JMAP account; otherwise it lives in the open folder.
+      const stamped = !!(email?.sourceClientAccountId && email.sourceAccountId);
+      const login = stamped ? email!.sourceClientAccountId! : viewLogin;
+      const jmapAccountId = stamped
+        ? email!.sourceAccountId
+        : (currentMailbox?.isShared ? currentMailbox.accountId : undefined);
+      if (!login) continue;
+      const key = `${login}|${jmapAccountId ?? ''}`;
+      if (!groups.has(key)) groups.set(key, { login, jmapAccountId, ids: [] });
+      groups.get(key)!.ids.push(id);
+    }
+
+    // Copying a message into its own account is not a cross-account copy.
+    const destPrimary = auth.getClientForAccount(destAccountId)?.getAccountId();
+    for (const { login, jmapAccountId } of groups.values()) {
+      if (login === destAccountId && (!jmapAccountId || jmapAccountId === destPrimary)) {
+        const error = new Error('The messages are already in that account');
+        set({ error: error.message });
+        throw error;
+      }
+    }
+
+    for (const { login, jmapAccountId, ids } of groups.values()) {
+      await get().crossAccountMoveEmails(
+        new Map([[login, ids]]),
+        destAccountId,
+        destMailboxId,
+        undefined,
+        jmapAccountId,
+        { keepOriginal: true },
+      );
     }
   },
 

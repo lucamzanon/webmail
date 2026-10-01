@@ -35,6 +35,7 @@ import {
   Paperclip,
   Link as LinkIcon,
   MessagesSquare,
+  Copy,
 } from "@/components/icons";
 import { buildMailPath } from "@/lib/deep-links";
 import { useCopyLink } from "@/hooks/use-copy-link";
@@ -47,6 +48,15 @@ import { RulesContextSubMenu } from "./rules-menu";
 interface Position {
   x: number;
   y: number;
+}
+
+/** Another connected account the "Copy to" entry can copy into. */
+export interface CopyTargetAccount {
+  /** The login (AccountEntry.id). */
+  accountId: string;
+  label: string;
+  /** That account's own folders, as its client returns them. */
+  mailboxes: Mailbox[];
 }
 
 interface EmailContextMenuProps {
@@ -90,6 +100,12 @@ interface EmailContextMenuProps {
   onBatchMoveToMailbox?: (mailboxId: string) => void;
   onBatchMarkAsSpam?: () => void;
   onBatchUndoSpam?: () => void;
+  /**
+   * Other connected accounts to offer under "Copy to". Copies the selection
+   * (or the single message) and keeps the originals. Hidden when empty.
+   */
+  copyTargets?: CopyTargetAccount[];
+  onCopyToAccount?: (accountId: string, mailboxId: string) => void;
 }
 
 // Get mailbox icon based on role
@@ -144,6 +160,8 @@ export function EmailContextMenu({
   onEditDraft,
   onCancelScheduledForEdit,
   onRescheduleScheduled,
+  copyTargets,
+  onCopyToAccount,
 }: EmailContextMenuProps) {
   const t = useTranslations("context_menu");
   const tSidebar = useTranslations("sidebar");
@@ -177,17 +195,62 @@ export function EmailContextMenu({
   );
   const mailboxTree = buildMailboxTree(mailboxes);
 
-  // Filter tree to only include branches that contain valid move targets
-  const filterTree = (nodes: MailboxNode[]): MailboxNode[] => {
+  // Filter tree to only include branches that contain valid targets
+  const filterTree = (nodes: MailboxNode[], targetIds: Set<string>): MailboxNode[] => {
     return nodes.reduce<MailboxNode[]>((acc, node) => {
-      const filteredChildren = filterTree(node.children);
-      if (moveTargetIds.has(node.id) || filteredChildren.length > 0) {
+      const filteredChildren = filterTree(node.children, targetIds);
+      if (targetIds.has(node.id) || filteredChildren.length > 0) {
         acc.push({ ...node, children: filteredChildren });
       }
       return acc;
     }, []);
   };
-  const moveTree = filterTree(mailboxTree);
+  const moveTree = filterTree(mailboxTree, moveTargetIds);
+
+  // Folders of the other connected accounts a copy can land in.
+  const copyTrees = (copyTargets ?? [])
+    .map((target) => {
+      const targetIds = new Set(
+        target.mailboxes
+          .filter((m) => !m.isShared && m.role !== "drafts" && m.myRights?.mayAddItems)
+          .map((m) => m.id)
+      );
+      return { ...target, targetIds, tree: filterTree(buildMailboxTree(target.mailboxes), targetIds) };
+    })
+    .filter((target) => target.tree.length > 0);
+
+  const renderMailboxNodes = (
+    nodes: MailboxNode[],
+    targetIds: Set<string>,
+    testIdPrefix: string,
+    onPick: (mailboxId: string) => void,
+  ): React.ReactNode =>
+    nodes.map((node) => {
+      const Icon = getMailboxIcon(node.role);
+      const nodeLabel = localizeMailboxName(node.role, node.name, (k) => tSidebar(`mailboxes.${k}`));
+      return (
+        <div key={node.id}>
+          {targetIds.has(node.id) ? (
+            <ContextMenuItem
+              icon={Icon}
+              label={nodeLabel}
+              testId={`${testIdPrefix}${node.id}`}
+              onClick={() => handleAction(() => onPick(node.id))}
+            />
+          ) : (
+            <div className="px-3 py-1.5 text-sm flex items-center gap-2 text-muted-foreground">
+              <Icon className="w-4 h-4 flex-shrink-0" />
+              <span>{nodeLabel}</span>
+            </div>
+          )}
+          {node.children.length > 0 && (
+            <div className="ps-4">
+              {renderMailboxNodes(node.children, targetIds, testIdPrefix, onPick)}
+            </div>
+          )}
+        </div>
+      );
+    });
 
   const handleAction = (action: () => void) => {
     action();
@@ -327,44 +390,25 @@ export function EmailContextMenu({
       {/* Move to submenu */}
       {moveTree.length > 0 && (
         <ContextMenuSubMenu icon={FolderInput} label={t("move_to")} testId="ctx-move-to">
-          {(() => {
-            const renderNodes = (nodes: MailboxNode[]) => {
-              return nodes.map((node) => {
-                const Icon = getMailboxIcon(node.role);
-                const isTarget = moveTargetIds.has(node.id);
-                const nodeLabel = localizeMailboxName(node.role, node.name, (k) => tSidebar(`mailboxes.${k}`));
-                return (
-                  <div key={node.id}>
-                    {isTarget ? (
-                      <ContextMenuItem
-                        icon={Icon}
-                        label={nodeLabel}
-                        testId={`move-to:${node.id}`}
-                        onClick={() =>
-                          handleAction(() =>
-                            showBatchActions
-                              ? onBatchMoveToMailbox?.(node.id)
-                              : onMoveToMailbox?.(node.id)
-                          )
-                        }
-                      />
-                    ) : (
-                      <div className="px-3 py-1.5 text-sm flex items-center gap-2 text-muted-foreground">
-                        <Icon className="w-4 h-4 flex-shrink-0" />
-                        <span>{nodeLabel}</span>
-                      </div>
-                    )}
-                    {node.children.length > 0 && (
-                      <div className="ps-4">
-                        {renderNodes(node.children)}
-                      </div>
-                    )}
-                  </div>
-                );
-              });
-            };
-            return renderNodes(moveTree);
-          })()}
+          {renderMailboxNodes(moveTree, moveTargetIds, "move-to:", (mailboxId) =>
+            showBatchActions
+              ? onBatchMoveToMailbox?.(mailboxId)
+              : onMoveToMailbox?.(mailboxId)
+          )}
+        </ContextMenuSubMenu>
+      )}
+
+      {/* Copy to another connected account, keeping the originals */}
+      {onCopyToAccount && copyTrees.length > 0 && (
+        <ContextMenuSubMenu icon={Copy} label={t("copy_to_account")} testId="ctx-copy-to">
+          {copyTrees.map((target) => (
+            <div key={target.accountId}>
+              <ContextMenuHeader>{target.label}</ContextMenuHeader>
+              {renderMailboxNodes(target.tree, target.targetIds, `copy-to:${target.accountId}:`, (mailboxId) =>
+                onCopyToAccount(target.accountId, mailboxId)
+              )}
+            </div>
+          ))}
         </ContextMenuSubMenu>
       )}
 
