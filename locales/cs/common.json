@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Minimalizovat",
+    "maximize": "Celá obrazovka",
+    "restore": "Obnovit",
     "read_receipt_on": "Vyžádáno potvrzení o přečtení (kliknutím vypnete)",
     "read_receipt_off": "Vyžádat potvrzení o přečtení",
     "dsn_on": "Oznámení o doručení vyžádáno (kliknutím vypnete)",

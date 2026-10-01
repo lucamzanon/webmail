@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Simge durumuna küçült",
+    "maximize": "Tam ekran",
+    "restore": "Geri yükle",
     "read_receipt_on": "Okundu bilgisi istendi (devre dışı bırakmak için tıklayın)",
     "read_receipt_off": "Okundu bilgisi iste",
     "dsn_on": "Teslimat bildirimi istendi (kapatmak için tıklayın)",

@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Minimaliseren",
+    "maximize": "Volledig scherm",
+    "restore": "Herstellen",
     "read_receipt_on": "Leesbevestiging aangevraagd (klik om uit te schakelen)",
     "read_receipt_off": "Leesbevestiging aanvragen",
     "dsn_on": "Bezorgmelding aangevraagd (klik om uit te schakelen)",

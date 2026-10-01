@@ -273,6 +273,28 @@ describe('ThreadListItem row content', () => {
   });
 });
 
+describe('ThreadListItem Gmail mobile row layout', () => {
+  it('sets the star at the end of the preview line, not under the time', () => {
+    useSettingsStore.setState({ uiSkin: 'gmail', mailLayout: 'split', showPreview: true, density: 'regular' } as never);
+    useUIStore.setState({ isMobile: true, isTablet: false, isDesktop: false });
+    const [thread] = groupEmailsByThread([makeEmail()]);
+    const { container } = render(
+      <ThreadListItem
+        thread={thread}
+        isExpanded={false}
+        onToggleExpand={() => {}}
+        onEmailSelect={() => {}}
+        onToggleStar={() => {}}
+      />,
+    );
+
+    const stars = container.querySelectorAll('[data-gmail-mobile-row] button[aria-pressed]');
+    expect(stars).toHaveLength(1);
+    // Same line as the preview text: Gmail's snippet ... star.
+    expect(stars[0].parentElement?.querySelector('p')).not.toBeNull();
+  });
+});
+
 describe('ThreadListItem shift-range avatar selection', () => {
   beforeEach(() => {
     useSettingsStore.setState({

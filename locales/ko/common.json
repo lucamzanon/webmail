@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "최소화",
+    "maximize": "전체 화면",
+    "restore": "복원",
     "read_receipt_on": "읽음 확인 요청됨 (클릭하여 해제)",
     "read_receipt_off": "읽음 확인 요청",
     "dsn_on": "배달 알림 요청됨 (클릭하여 해제)",

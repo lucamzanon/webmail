@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "最小化",
+    "maximize": "全屏",
+    "restore": "还原",
     "read_receipt_on": "已请求已读回执（点击以关闭）",
     "read_receipt_off": "请求已读回执",
     "dsn_on": "已请求投递通知（点击禁用）",

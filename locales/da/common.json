@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Minimer",
+    "maximize": "Fuld skærm",
+    "restore": "Gendan",
     "read_receipt_on": "Læsekvittering anmodet (klik for at deaktivere)",
     "read_receipt_off": "Anmod om læsekvittering",
     "dsn_on": "Leveringsbesked anmodet (klik for at slå fra)",

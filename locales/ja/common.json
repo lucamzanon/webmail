@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "最小化",
+    "maximize": "全画面表示",
+    "restore": "元に戻す",
     "read_receipt_on": "開封確認を要求中（クリックで無効化）",
     "read_receipt_off": "開封確認を要求する",
     "dsn_on": "配信通知を要求中（クリックで解除）",

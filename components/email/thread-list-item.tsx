@@ -674,10 +674,7 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
                       )}
                     </div>
                   </div>
-                  <div className={cn(
-                    "flex items-center gap-1.5 flex-shrink-0",
-                    gmailMobileRow && "self-stretch flex-col justify-between gap-0"
-                  )}>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     {showSourceFolder && <SourceFolderTag name={email.sourceFolder!} />}
                     {scheduledSendLabel ? (
                       <span
@@ -697,7 +694,7 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
                         {formatDate(email.receivedAt)}
                       </span>
                     )}
-                    {gmailMobileRow && (
+                    {gmailMobileRow && !(showPreview && density !== 'extra-compact' && density !== 'compact') && (
                       <GmailMobileStar
                         starred={!!isStarred}
                         onToggle={onToggleStar}
@@ -726,15 +723,24 @@ const SingleEmailItem = React.forwardRef<HTMLDivElement, SingleEmailItemProps>(
                 </div>
 
                 {showPreview && density !== 'extra-compact' && density !== 'compact' && (
-                  <p className={cn(
-                    "text-sm leading-relaxed",
-                    gmailMobileRow ? "line-clamp-1" : "line-clamp-2",
-                    isUnread
-                      ? "text-muted-foreground"
-                      : "text-muted-foreground/80"
-                  )}>
-                    {previewSnippet ? <SearchSnippetText snippet={previewSnippet} /> : (trimmedPreview || t('no_preview_available'))}
-                  </p>
+                  <div className={cn("flex min-w-0 items-center gap-1", !gmailMobileRow && "contents")}>
+                    <p className={cn(
+                      "text-sm leading-relaxed",
+                      gmailMobileRow ? "line-clamp-1 min-w-0 flex-1" : "line-clamp-2",
+                      isUnread
+                        ? "text-muted-foreground"
+                        : "text-muted-foreground/80"
+                    )}>
+                      {previewSnippet ? <SearchSnippetText snippet={previewSnippet} /> : (trimmedPreview || t('no_preview_available'))}
+                    </p>
+                    {gmailMobileRow && (
+                      <GmailMobileStar
+                        starred={!!isStarred}
+                        onToggle={onToggleStar}
+                        label={tHover('star')}
+                      />
+                    )}
+                  </div>
                 )}
                 <RowChips email={email} loadAttachments={loadAttachments} onOpenAttachment={onOpenAttachment} />
               </>
@@ -1228,10 +1234,7 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
                         )}
                       </div>
                     </div>
-                    <div className={cn(
-                      "flex items-center gap-1.5 flex-shrink-0",
-                      gmailMobileRow && "self-stretch flex-col justify-between gap-0"
-                    )}>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
                       {showSourceFolder && <SourceFolderTag name={latestEmail.sourceFolder!} />}
                       {scheduledSendLabel ? (
                         <span
@@ -1251,7 +1254,7 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
                           {formatDate(latestEmail.receivedAt)}
                         </span>
                       )}
-                      {gmailMobileRow && (
+                      {gmailMobileRow && !(showPreview && density !== 'extra-compact' && density !== 'compact') && (
                         <GmailMobileStar
                           starred={!!hasStarred}
                           onToggle={onToggleStar ? () => onToggleStar(latestEmail) : undefined}
@@ -1280,15 +1283,24 @@ export const ThreadListItem = React.forwardRef<HTMLDivElement, ThreadListItemPro
                   </div>
 
                   {showPreview && density !== 'extra-compact' && density !== 'compact' && (
-                    <p className={cn(
-                      "text-sm leading-relaxed",
-                      gmailMobileRow ? "line-clamp-1" : "line-clamp-2",
-                      hasUnread
-                        ? "text-muted-foreground"
-                        : "text-muted-foreground/80"
-                    )}>
-                      {previewSnippet ? <SearchSnippetText snippet={previewSnippet} /> : (trimmedPreview || tEmailViewer('no_preview_available'))}
-                    </p>
+                    <div className={cn("flex min-w-0 items-center gap-1", !gmailMobileRow && "contents")}>
+                      <p className={cn(
+                        "text-sm leading-relaxed",
+                        gmailMobileRow ? "line-clamp-1 min-w-0 flex-1" : "line-clamp-2",
+                        hasUnread
+                          ? "text-muted-foreground"
+                          : "text-muted-foreground/80"
+                      )}>
+                        {previewSnippet ? <SearchSnippetText snippet={previewSnippet} /> : (trimmedPreview || tEmailViewer('no_preview_available'))}
+                      </p>
+                      {gmailMobileRow && (
+                        <GmailMobileStar
+                          starred={!!hasStarred}
+                          onToggle={onToggleStar ? () => onToggleStar(latestEmail) : undefined}
+                          label={tHover('star')}
+                        />
+                      )}
+                    </div>
                   )}
                   <RowChips
                     email={latestEmail}

@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Minimizează",
+    "maximize": "Ecran complet",
+    "restore": "Restabilește",
     "read_receipt_on": "Solicitare confirmare de citire (faceți clic pentru a dezactiva)",
     "read_receipt_off": "Solicitați o confirmare de citire",
     "dsn_on": "Notificare de livrare solicitată (clic pentru a dezactiva)",

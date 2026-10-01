@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Minimalizuj",
+    "maximize": "Pełny ekran",
+    "restore": "Przywróć",
     "read_receipt_on": "Zażądano potwierdzenia przeczytania (kliknij, aby wyłączyć)",
     "read_receipt_off": "Zażądaj potwierdzenia przeczytania",
     "dsn_on": "Zażądano powiadomienia o dostarczeniu (kliknij, aby wyłączyć)",

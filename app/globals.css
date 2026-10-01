@@ -966,6 +966,16 @@ option {
   box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.16), 0 4px 8px 3px rgb(0 0 0 / 0.08);
 }
 
+/* The filter button sits inside the field's trailing end: keep typed text and
+   the clear button clear of it. */
+[data-skin="gmail"] .gm-topbar input[data-search-input] {
+  padding-inline-end: 5.5rem;
+}
+
+[data-skin="gmail"] .gm-topbar-search > div > form > button {
+  inset-inline-end: 3.25rem;
+}
+
 /* The magnifier sits on the field's baseline grid, one 48px hit area in. */
 [data-skin="gmail"] .gm-topbar-search > div > form > svg {
   inset-inline-start: 1rem;

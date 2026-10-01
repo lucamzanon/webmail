@@ -558,6 +558,9 @@
     }
   },
   "email_composer": {
+    "minimize": "מזעור",
+    "maximize": "מסך מלא",
+    "restore": "שחזור",
     "new_message": "הודעה חדשה",
     "signature_edit_hint": "לחץ לחיצה כפולה לעריכת החתימה",
     "reply": "השב",

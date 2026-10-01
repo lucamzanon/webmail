@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Minimize",
+    "maximize": "Full screen",
+    "restore": "Restore",
     "read_receipt_on": "Read receipt requested (click to disable)",
     "read_receipt_off": "Request a read receipt",
     "dsn_on": "Delivery notification requested (click to disable)",

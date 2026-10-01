@@ -704,7 +704,8 @@ export function EmailViewer({
   const emailKeywords = useSettingsStore((state) => state.emailKeywords);
   const { sortTagIds, tagColor } = useKeywordFormat();
   const toolbarPosition = useSettingsStore((state) => state.toolbarPosition);
-  const showToolbarLabels = useSettingsStore((state) => state.showToolbarLabels);
+  const showToolbarLabelsSetting = useSettingsStore((state) => state.showToolbarLabels);
+  const uiSkin = useSettingsStore((state) => state.uiSkin);
   const mailLayout = useEffectiveMailLayout();
   const calendarInvitationParsingEnabled = useSettingsStore((state) => state.calendarInvitationParsingEnabled);
   const readReceiptResponse = useSettingsStore((state) => state.readReceiptResponse);
@@ -757,6 +758,10 @@ export function EmailViewer({
 
   // Tablet list visibility
   const { isTablet, isMobile } = useDeviceDetection();
+  // Gmail's conversation view: an icon-only toolbar at the top, and Reply /
+  // Reply all / Forward as buttons under the message rather than in the bar.
+  const gmailViewer = uiSkin === 'gmail' && !isMobile;
+  const showToolbarLabels = showToolbarLabelsSetting && !gmailViewer;
   // Inside a Pro pane, `isMobile` above is pane-width based: overlays that
   // would go viewport-fixed must instead cover just the pane (via
   // PaneOverlay + absolute positioning), and viewport CSS breakpoints like
@@ -3099,7 +3104,7 @@ export function EmailViewer({
             <span className="text-sm">{t('edit_draft')}</span>
           </Button>
         )}
-        {!isScheduled && !isDraft && (<>
+        {!isScheduled && !isDraft && !gmailViewer && (<>
         <Button
           variant="ghost"
           size="sm"
@@ -5290,8 +5295,26 @@ export function EmailViewer({
 
           <PluginSlot name="email-footer" />
 
+          {/* Gmail skin: Reply / Reply all / Forward under the message, as Gmail lays them out. */}
+          {gmailViewer && !isDraft && !isScheduled && !isBodyLoading && (effectiveEmailContent.isHtml ? iframeReady : true) && (
+            <div className="flex flex-wrap items-center gap-2 px-6 pb-6 pt-2" data-skin-reply-row="">
+              <Button variant="outline" className="h-9 rounded-full px-5 gap-2" onClick={() => onReply?.()}>
+                <Reply className="w-4 h-4" />
+                {t('reply')}
+              </Button>
+              <Button variant="outline" className="h-9 rounded-full px-5 gap-2" onClick={onReplyAll}>
+                <ReplyAll className="w-4 h-4" />
+                {t('reply_all')}
+              </Button>
+              <Button variant="outline" className="h-9 rounded-full px-5 gap-2" onClick={onForward}>
+                <Forward className="w-4 h-4" />
+                {t('forward')}
+              </Button>
+            </div>
+          )}
+
           {/* Quick Reply Section - hidden for drafts and while loading a new email */}
-          {!isDraft && !isScheduled && !isBodyLoading && (effectiveEmailContent.isHtml ? iframeReady : true) && (<div className="bg-background border-t border-border px-6 mt-auto" style={{ paddingBlock: 'var(--density-header-py)' }}>
+          {!gmailViewer && !isDraft && !isScheduled && !isBodyLoading && (effectiveEmailContent.isHtml ? iframeReady : true) && (<div className="bg-background border-t border-border px-6 mt-auto" style={{ paddingBlock: 'var(--density-header-py)' }}>
             <div className="flex items-start" style={{ gap: 'var(--density-item-gap)' }}>
               <div className="flex-shrink-0">
                 <Avatar

@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Réduire",
+    "maximize": "Plein écran",
+    "restore": "Restaurer",
     "read_receipt_on": "Accusé de lecture demandé (cliquez pour désactiver)",
     "read_receipt_off": "Demander un accusé de lecture",
     "dsn_on": "Notification de remise demandée (cliquer pour désactiver)",

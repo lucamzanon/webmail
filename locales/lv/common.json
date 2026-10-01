@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Minimizēt",
+    "maximize": "Pilnekrāns",
+    "restore": "Atjaunot",
     "read_receipt_on": "Pieprasīts lasīšanas apstiprinājums (noklikšķiniet, lai atspējotu)",
     "read_receipt_off": "Pieprasīt lasīšanas apstiprinājumu",
     "dsn_on": "Piegādes paziņojums pieprasīts (noklikšķiniet, lai atspējotu)",

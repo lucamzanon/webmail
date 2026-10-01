@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Kis méret",
+    "maximize": "Teljes képernyő",
+    "restore": "Visszaállítás",
     "read_receipt_on": "Olvasási visszaigazolás kérve (kattints a letiltáshoz)",
     "read_receipt_off": "Olvasási visszaigazolás kérése",
     "dsn_on": "Kézbesítési értesítés kérve (kattints a kikapcsoláshoz)",

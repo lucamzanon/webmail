@@ -176,8 +176,9 @@ export function GmailTopBar({
           type="button"
           onClick={onToggleFilters}
           disabled={searchDisabled}
+          // Inside the field's trailing end, as Gmail draws its search options.
           className={cn(
-            "relative grid place-items-center w-12 h-12 rounded-full transition-colors shrink-0",
+            "absolute end-1 top-1/2 -translate-y-1/2 z-10 grid place-items-center w-10 h-10 rounded-full transition-colors",
             searchDisabled && "opacity-50 cursor-not-allowed",
             filtersOpen || activeFilterCount > 0
               ? "bg-primary/10 text-primary"
@@ -194,15 +195,14 @@ export function GmailTopBar({
           )}
         </button>
 
-        {/* Anchor for the advanced-filter panel: the search field's own box -
-            the wrapper less the 48px filter button and its 4px gap - so the
-            panel shares the field's leading edge and width. It only marks the
-            spot; the panel itself is drawn at the end of <body>. */}
+        {/* Anchor for the advanced-filter panel: the search field's own box,
+            filter button included, so the panel shares the field's edges. It
+            only marks the spot; the panel itself is drawn at the end of <body>. */}
         <div
           ref={onFilterAnchorChange}
           aria-hidden
           data-skin-filter-anchor=""
-          className="pointer-events-none absolute start-0 end-[52px] top-full h-0"
+          className="pointer-events-none absolute start-0 end-0 top-full h-0"
         />
       </div>
 

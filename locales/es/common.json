@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Minimizar",
+    "maximize": "Pantalla completa",
+    "restore": "Restaurar",
     "read_receipt_on": "Confirmación de lectura solicitada (haz clic para desactivar)",
     "read_receipt_off": "Solicitar confirmación de lectura",
     "dsn_on": "Notificación de entrega solicitada (clic para desactivar)",

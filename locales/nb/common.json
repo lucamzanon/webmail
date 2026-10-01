@@ -593,6 +593,9 @@
     }
   },
   "email_composer": {
+    "minimize": "Minimer",
+    "maximize": "Fullskjerm",
+    "restore": "Gjenopprett",
     "read_receipt_on": "Ber om lesebekreftelse (klikk for å slå av)",
     "read_receipt_off": "Be om lesebekreftelse",
     "dsn_on": "Leveringsvarsel forespurt (klikk for å slå av)",
