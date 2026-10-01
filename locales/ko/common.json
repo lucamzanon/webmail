@@ -18,6 +18,7 @@
     "reconnecting": "연결이 끊어졌어요. 다시 연결을 시도할게요...",
     "error": {
       "invalid_credentials": "이메일이나 비밀번호가 맞지 않아요. 다시 확인해 주세요.",
+      "invalid_token": "서버가 이 액세스 토큰을 받아들이지 않았어요. 토큰이 완전한지, 만료되거나 취소되지 않았는지 확인해 주세요.",
       "connection_failed": "서버에 연결할 수 없어요. 인터넷 연결을 확인하고 다시 시도해 주세요.",
       "cors_blocked": "서버에는 연결되었지만 교차 출처 요청(CORS)이 차단되었어요. JMAP 서버 설정을 확인해 주세요.",
       "server_error": "일시적으로 서버를 사용할 수 없어요. 나중에 다시 시도해 주세요.",
@@ -29,6 +30,11 @@
     "show_password": "비밀번호 표시",
     "hide_password": "비밀번호 숨기기",
     "totp_toggle": "2단계 인증 코드가 있어요",
+    "token_toggle": "액세스 토큰으로 로그인",
+    "password_toggle": "비밀번호로 로그인",
+    "token_label": "액세스 토큰",
+    "token_placeholder": "API 토큰을 붙여 넣으세요",
+    "token_hint": "메일 서비스 설정에서 API 토큰을 만든 후 여기에 붙여 넣으세요.",
     "remember_me": "로그인 유지",
     "config_error": {
       "title": "설정 오류",
@@ -725,6 +731,7 @@
     "recipient_name_placeholder": "표시 이름",
     "autocomplete_search_server": "서버에서 검색",
     "autocomplete_searching": "검색 중...",
+    "mention_recipients": "수신자",
     "toolbar": {
       "bold": "굵게",
       "italic": "기울임꼴",
@@ -842,7 +849,19 @@
     "templates_import_empty": "파일에서 템플릿을 찾을 수 없어요",
     "export_email_error": "메일 내보내기에 실패했어요",
     "import_email_success": "메일을 성공적으로 가져왔어요",
-    "import_email_error": "메일 가져오기에 실패했어요"
+    "import_email_error": "메일 가져오기에 실패했어요",
+    "rule_created": "규칙을 만들었어요",
+    "rule_merged": "“{name}” 규칙에 추가했어요",
+    "rule_already_covered": "이미 “{name}” 규칙에 포함되어 있어요",
+    "rule_apply_existing": "{count, plural, other {기존 메일 #개에 적용}}",
+    "rule_applied": "{count, plural, =0 {바꿀 메일이 없었어요} other {메일 #개에 규칙을 적용했어요}}",
+    "rule_apply_failed": "기존 메일에 규칙을 적용하지 못했어요",
+    "rule_edit": "규칙 편집",
+    "rule_undo": "실행 취소",
+    "rule_undone": "규칙 변경을 취소했어요",
+    "rule_undo_failed": "규칙 변경을 취소하지 못했어요",
+    "rule_undo_conflict": "그 사이에 필터가 바뀌었어요. 필터 설정에서 변경을 취소하세요.",
+    "rule_folder_failed": "폴더를 만들지 못했어요"
   },
   "date": {
     "today": "오늘",
@@ -1524,6 +1543,10 @@
         "label": "빈 제목 경고",
         "description": "제목 없는 메시지를 보내기 전에 확인을 요청합니다."
       },
+      "recipient_mentions": {
+        "label": "@로 받는 사람 언급",
+        "description": "본문에 @를 입력하면 받는 사람이 제안되고 선택한 사람의 이름이 삽입됩니다. Enter 또는 Tab으로 강조된 이름을 선택합니다."
+      },
       "hide_inline_image_attachments": {
         "label": "첨부 파일 목록에서 인라인 이미지 숨기기",
         "description": "메시지 본문에 포함된 이미지는 별도의 첨부 파일로 표시되지 않습니다"
@@ -1618,6 +1641,7 @@
       "auth_method_label": "인증 방법",
       "auth_method_oauth": "SSO (OAuth/OIDC)",
       "auth_method_basic": "비밀번호",
+      "auth_method_token": "액세스 토큰",
       "demo_account": "데모 계정",
       "email": {
         "label": "이메일 주소",
@@ -1975,6 +1999,32 @@
       },
       "about": {
         "title": "Bulwark Webmail 정보"
+      },
+      "spam_siege": {
+        "title": "Spam Siege",
+        "intro": "스팸과 피싱이 받은편지함에 닿기 전에 클릭해서 막아 주세요. 진짜 메일은 통과시켜 주세요. 방패 세 개를 모두 잃으면 받은편지함이 함락돼요.",
+        "kinds": {
+          "spam": "스팸",
+          "phishing": "피싱",
+          "legit": "진짜 메일"
+        },
+        "click_to_block": "클릭해서 차단",
+        "let_through": "통과시키기",
+        "start": "시작",
+        "play_again": "다시 하기",
+        "score": "점수",
+        "combo": "연속 보너스",
+        "shields_left": "방패 {total}개 중 {count}개 남음",
+        "seconds": "{seconds}초",
+        "best": "최고: {score}",
+        "new_best": "최고 기록 경신",
+        "held": "받은편지함을 지켰어요",
+        "overrun": "받은편지함이 함락됐어요",
+        "stats": {
+          "caught": "차단",
+          "delivered": "배달",
+          "mistakes": "실수"
+        }
       }
     },
     "sidebar_apps": {
@@ -2108,7 +2158,9 @@
         "ends_with": "다음으로 끝남",
         "matches": "패턴 일치",
         "greater_than": "다음보다 큼",
-        "less_than": "다음보다 작음"
+        "less_than": "다음보다 작음",
+        "address_is": "주소가 다음과 같음",
+        "domain_is": "도메인이 다음과 같음"
       },
       "action_types": {
         "move": "폴더로 이동",
@@ -2183,7 +2235,26 @@
         "actions_count": "동작 {count}개"
       },
       "origin_external": "외부",
-      "managed_by_tooltip": "{source}에서 관리됩니다. 해당 앱에서 편집하거나 원시 Sieve 편집기를 사용하세요."
+      "managed_by_tooltip": "{source}에서 관리됩니다. 해당 앱에서 편집하거나 원시 Sieve 편집기를 사용하세요.",
+      "quick_rule_names": {
+        "move_sender": "{sender}에서 {folder}(으)로 이동",
+        "move_domain": "@{domain}에서 {folder}(으)로 이동",
+        "move_list": "리스트 {list}를 {folder}(으)로 이동",
+        "mark_read": "{sender}의 메일을 읽음으로 표시",
+        "tag": "{sender}의 메일에 {tag} 태그",
+        "block": "{sender} 차단",
+        "custom": "{sender}의 메일",
+        "custom_plain": "새 규칙",
+        "senders": "{count, plural, other {보낸 사람 #명}}"
+      },
+      "suggestions": "제안",
+      "suggest_subject": "제목 “{subject}”",
+      "suggest_to": "받는 사람 {address}",
+      "suggest_cc": "참조 {address}",
+      "suggest_list": "List-Id",
+      "suggest_domain": "@{domain}",
+      "apply_existing": "이 폴더에 이미 있는 메일에도 적용",
+      "apply_existing_unsupported": "보낸 사람, 받는 사람, 제목 또는 헤더를 확인하고 이동, 복사, 읽음 표시, 별표 또는 태그를 하는 규칙만 기존 메일에 적용할 수 있어요."
     },
     "templates": {
       "title": "이메일 템플릿",
@@ -2322,7 +2393,22 @@
     "cancel_scheduled_send": "보내기 취소",
     "reschedule_send": "다시 예약",
     "cancel_and_edit": "취소하고 편집",
-    "cancel_and_compose_again": "취소하고 다시 작성"
+    "cancel_and_compose_again": "취소하고 다시 작성",
+    "rules": {
+      "title": "규칙",
+      "move_from": "{sender}의 메일을 항상 이동",
+      "move_from_domain": "@{domain}의 메일을 항상 이동",
+      "move_from_list": "이 메일링 리스트의 메일을 항상 이동",
+      "mark_read_from": "{sender}의 메일을 항상 읽음으로 표시",
+      "tag_with": "항상 태그 추가",
+      "block": "{count, plural, =1 {보낸 사람 차단} other {보낸 사람 #명 차단}}",
+      "no_junk": "이 계정에는 스팸 폴더가 없어요",
+      "create": "규칙 만들기…",
+      "manage": "규칙 관리",
+      "senders_count": "{count, plural, other {보낸 사람 #명}}",
+      "cross_account": "한 계정의 메일만 선택하세요",
+      "opaque_hint": "필터가 직접 편집되었어요. 필터 설정을 여세요"
+    }
   },
   "mailbox_context_menu": {
     "mark_folder_read": "폴더를 읽음으로 표시",
@@ -2911,6 +2997,7 @@
       "save_note": "저장",
       "note_saved": "메모가 추가되었어요",
       "open_link": "링크 열기",
+      "copy_location": "위치 복사",
       "meeting_link": "화상 회의 링크",
       "tentative": "미정",
       "cancelled": "취소됨",

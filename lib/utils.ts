@@ -242,7 +242,12 @@ export function stripInvisibleLeading(text: string): string {
 // rule. Plain prose does not start like this - "@" or "#" followed by a word
 // and then, before any sentence ends, a "{".
 const DECLARATIONS_RE = /^\s*(?:[-\w]+\s*:|[.#@a-z*][^{}]*\{)/i;
-const LEADING_CSS_RE = /^(?:@(?:media|font-face|import|supports|keyframes|charset|page)\b|[.#]?[a-z*][\w\-.#:,>~+*\s[\]="']*\{)/i;
+// At-rule names are matched case-sensitively: style sheets write them in lower
+// case, while "@Page …" at the start of a preview is a mention. A selector's
+// colon is a pseudo-class ("a:hover"), never followed by a space as in
+// "Reminder: your appointment {date: …}".
+const AT_RULE_RE = /^@(?:media|font-face|import|supports|keyframes|charset|page)\b/;
+const SELECTOR_RE = /^[.#]?[a-z*](?:[\w\-.#,>~+*\s[\]="']|:(?!\s))*\{/i;
 
 /**
  * Drops a style sheet from the start of a text preview.
@@ -256,15 +261,17 @@ const LEADING_CSS_RE = /^(?:@(?:media|font-face|import|supports|keyframes|charse
  */
 export function stripLeadingCss(text: string): string {
   let rest = text.trimStart();
-  for (let guard = 0; guard < 100 && LEADING_CSS_RE.test(rest); guard++) {
+  for (let guard = 0; guard < 100 && (AT_RULE_RE.test(rest) || SELECTOR_RE.test(rest)); guard++) {
     const brace = rest.indexOf('{');
     const semicolon = rest.indexOf(';');
     // `@import url(...);` and `@charset "x";` end without a block.
-    if (semicolon >= 0 && (brace < 0 || semicolon < brace) && rest.startsWith('@')) {
+    if (semicolon >= 0 && (brace < 0 || semicolon < brace) && /^@(?:import|charset)\b/.test(rest)) {
       rest = rest.slice(semicolon + 1).trimStart();
       continue;
     }
-    if (brace < 0) return '';
+    // An at-rule word with no block after it ("@media team, …", "@page 3 …")
+    // starts prose, not a style sheet.
+    if (brace < 0) return rest;
     let depth = 0;
     let end = -1;
     for (let i = brace; i < rest.length; i++) {

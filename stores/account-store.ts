@@ -12,11 +12,14 @@ export interface AccountEntry {
   serverUrl: string;
   /** Username / email used to authenticate */
   username: string;
-  /** Authentication mode */
-  authMode: 'basic' | 'oauth';
+  /**
+   * Authentication mode: a password (Basic), OAuth/SSO tokens that renew, or
+   * an access token the user pasted (Bearer, no renewal).
+   */
+  authMode: 'basic' | 'oauth' | 'token';
   /** Cookie slot index for session/token cookies (0 ≤ slot < MAX_ACCOUNT_SLOTS) */
   cookieSlot: number;
-  /** Whether "Remember Me" was checked (basic auth only) */
+  /** Whether "Remember Me" was checked (password and access-token logins) */
   rememberMe: boolean;
   /** Restorable from a user-encrypted server archive; keep metadata on expiry. */
   vaultManaged?: boolean;

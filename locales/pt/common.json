@@ -18,6 +18,7 @@
     "reconnecting": "Conexão perdida. Tentando reconectar…",
     "error": {
       "invalid_credentials": "E-mail ou senha inválidos",
+      "invalid_token": "O servidor não aceitou este token de acesso. Verifique se ele está completo e se não expirou nem foi revogado.",
       "connection_failed": "Falha ao conectar com o servidor",
       "cors_blocked": "O servidor está acessível mas está bloqueando requisições de origem cruzada. Verifique as configurações de CORS do seu servidor JMAP e permita este domínio.",
       "server_error": "O servidor está temporariamente indisponível. Tente novamente mais tarde.",
@@ -29,6 +30,11 @@
     "show_password": "Mostrar senha",
     "hide_password": "Ocultar senha",
     "totp_toggle": "Tenho um código 2FA",
+    "token_toggle": "Entrar com um token de acesso",
+    "password_toggle": "Entrar com uma senha",
+    "token_label": "Token de acesso",
+    "token_placeholder": "Cole seu token de API",
+    "token_hint": "Crie um token de API nas configurações do seu provedor de e-mail e cole-o aqui.",
     "remember_me": "Lembrar-me",
     "config_error": {
       "title": "Erro de Configuração",
@@ -725,6 +731,7 @@
     "recipient_name_placeholder": "Nome de exibição",
     "autocomplete_search_server": "Pesquisar no servidor",
     "autocomplete_searching": "Pesquisando...",
+    "mention_recipients": "Destinatários",
     "toolbar": {
       "bold": "Negrito",
       "italic": "Itálico",
@@ -842,7 +849,19 @@
     "templates_import_empty": "Nenhum modelo encontrado no arquivo",
     "export_email_error": "Falha ao exportar o e-mail",
     "import_email_success": "E-mail importado com sucesso",
-    "import_email_error": "Falha ao importar o e-mail"
+    "import_email_error": "Falha ao importar o e-mail",
+    "rule_created": "Regra criada",
+    "rule_merged": "Adicionado à regra “{name}”",
+    "rule_already_covered": "Já coberto pela regra “{name}”",
+    "rule_apply_existing": "{count, plural, one {Aplicar a # mensagem existente} other {Aplicar a # mensagens existentes}}",
+    "rule_applied": "{count, plural, =0 {Nenhuma mensagem precisou de alterações} one {Regra aplicada a # mensagem} other {Regra aplicada a # mensagens}}",
+    "rule_apply_failed": "Não foi possível aplicar a regra às mensagens existentes",
+    "rule_edit": "Editar regra",
+    "rule_undo": "Desfazer",
+    "rule_undone": "Alteração da regra desfeita",
+    "rule_undo_failed": "Não foi possível desfazer a alteração da regra",
+    "rule_undo_conflict": "Seus filtros mudaram desde então. Desfaça a alteração nas configurações de filtros.",
+    "rule_folder_failed": "Não foi possível criar a pasta"
   },
   "date": {
     "today": "Hoje",
@@ -1528,6 +1547,10 @@
         "label": "Aviso de assunto vazio",
         "description": "Pedir confirmação antes de enviar uma mensagem sem assunto."
       },
+      "recipient_mentions": {
+        "label": "Mencionar destinatários com @",
+        "description": "Ao digitar @ na mensagem, são sugeridos os destinatários e é inserido o primeiro nome do escolhido. Enter ou Tab escolhe o nome destacado."
+      },
       "hide_inline_image_attachments": {
         "label": "Ocultar imagens incorporadas dos anexos",
         "description": "As imagens incorporadas no corpo da mensagem não são listadas como anexos separados"
@@ -1622,6 +1645,7 @@
       "auth_method_label": "Autenticação",
       "auth_method_oauth": "Login único (OAuth/OIDC)",
       "auth_method_basic": "Senha",
+      "auth_method_token": "Token de acesso",
       "demo_account": "Conta de demonstração",
       "email": {
         "label": "Endereço de E-mail",
@@ -1979,6 +2003,32 @@
       },
       "about": {
         "title": "Bulwark Webmail"
+      },
+      "spam_siege": {
+        "title": "Spam Siege",
+        "intro": "Clique em spam e phishing antes que cheguem à sua caixa de entrada. Deixe passar os e-mails reais. Se perder os três escudos, a caixa cai.",
+        "kinds": {
+          "spam": "Spam",
+          "phishing": "Phishing",
+          "legit": "E-mail real"
+        },
+        "click_to_block": "Clique para bloquear",
+        "let_through": "Deixe passar",
+        "start": "Começar",
+        "play_again": "Jogar de novo",
+        "score": "Pontos",
+        "combo": "Bônus de sequência",
+        "shields_left": "{count} de {total} escudos restantes",
+        "seconds": "{seconds} s",
+        "best": "Recorde: {score}",
+        "new_best": "Novo recorde",
+        "held": "Caixa de entrada defendida",
+        "overrun": "Caixa de entrada invadida",
+        "stats": {
+          "caught": "Bloqueados",
+          "delivered": "Entregues",
+          "mistakes": "Erros"
+        }
       }
     },
     "sidebar_apps": {
@@ -2112,7 +2162,9 @@
         "ends_with": "termina com",
         "matches": "corresponde ao padrão",
         "greater_than": "é maior que",
-        "less_than": "é menor que"
+        "less_than": "é menor que",
+        "address_is": "é o endereço",
+        "domain_is": "tem o domínio"
       },
       "action_types": {
         "move": "Mover para pasta",
@@ -2187,7 +2239,26 @@
         "actions_count": "{count, plural, one {# ação} other {# ações}}"
       },
       "origin_external": "Externo",
-      "managed_by_tooltip": "Gerenciado por {source}. Edite nesse aplicativo ou use o editor Sieve bruto."
+      "managed_by_tooltip": "Gerenciado por {source}. Edite nesse aplicativo ou use o editor Sieve bruto.",
+      "quick_rule_names": {
+        "move_sender": "Mover de {sender} para {folder}",
+        "move_domain": "Mover de @{domain} para {folder}",
+        "move_list": "Mover a lista {list} para {folder}",
+        "mark_read": "Marcar como lidas as de {sender}",
+        "tag": "Etiquetar como {tag} as de {sender}",
+        "block": "Bloquear {sender}",
+        "custom": "Mensagens de {sender}",
+        "custom_plain": "Nova regra",
+        "senders": "{count, plural, one {# remetente} other {# remetentes}}"
+      },
+      "suggestions": "Sugestões",
+      "suggest_subject": "Assunto “{subject}”",
+      "suggest_to": "Para {address}",
+      "suggest_cc": "Cc {address}",
+      "suggest_list": "List-Id",
+      "suggest_domain": "@{domain}",
+      "apply_existing": "Aplicar também às mensagens que já estão nesta pasta",
+      "apply_existing_unsupported": "Só regras que verificam o remetente, os destinatários, o assunto ou os cabeçalhos, e que movem, copiam, marcam como lida, marcam com estrela ou etiquetam, podem ser aplicadas a mensagens existentes."
     },
     "templates": {
       "title": "Modelos de e-mail",
@@ -2326,7 +2397,22 @@
     "cancel_scheduled_send": "Cancelar envio",
     "reschedule_send": "Reagendar",
     "cancel_and_edit": "Cancelar e editar",
-    "cancel_and_compose_again": "Cancelar e escrever novamente"
+    "cancel_and_compose_again": "Cancelar e escrever novamente",
+    "rules": {
+      "title": "Regras",
+      "move_from": "Sempre mover mensagens de {sender}",
+      "move_from_domain": "Sempre mover mensagens de @{domain}",
+      "move_from_list": "Sempre mover mensagens desta lista",
+      "mark_read_from": "Sempre marcar como lidas as mensagens de {sender}",
+      "tag_with": "Sempre etiquetar com",
+      "block": "{count, plural, one {Bloquear remetente} other {Bloquear # remetentes}}",
+      "no_junk": "Esta conta não tem pasta de spam",
+      "create": "Criar regra…",
+      "manage": "Gerenciar regras",
+      "senders_count": "{count, plural, one {# remetente} other {# remetentes}}",
+      "cross_account": "Selecione mensagens de uma única conta",
+      "opaque_hint": "Seus filtros foram editados manualmente. Abra as configurações de filtros"
+    }
   },
   "mailbox_context_menu": {
     "mark_folder_read": "Marcar pasta como lida",
@@ -2915,6 +3001,7 @@
       "save_note": "Salvar",
       "note_saved": "Nota adicionada",
       "open_link": "Abrir link",
+      "copy_location": "Copiar local",
       "meeting_link": "Link da reunião",
       "tentative": "Provisório",
       "cancelled": "Cancelado",

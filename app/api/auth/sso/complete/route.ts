@@ -49,8 +49,10 @@ export async function POST(request: NextRequest) {
     // Per-account refresh-token cookie slot. Without this the route hardcoded
     // slot 0, so the "+ Add Account" flow overwrote the first account's
     // refresh-token cookie. Default to 0 for back-compat with any caller that
-    // omits slot. Mirrors the validation in /api/auth/token POST.
-    const slot = typeof bodySlot === 'number' && Number.isInteger(bodySlot) && bodySlot >= 0 && bodySlot < MAX_ACCOUNT_SLOTS ? bodySlot : 0;
+    // omits slot. Mirrors the validation in /api/auth/token POST: slots run
+    // up to MAX_ACCOUNT_SLOTS, so a sixth account must not land on slot 0.
+    const slot = typeof bodySlot === 'number' && Number.isInteger(bodySlot)
+      && bodySlot >= 0 && bodySlot < MAX_ACCOUNT_SLOTS ? bodySlot : 0;
 
     // Read and decrypt the pending SSO cookie
     const pendingCookie = cookieStore.get(SSO_PENDING_COOKIE)?.value;

@@ -25,7 +25,8 @@ import type { IJMAPClient } from "@/lib/jmap/client-interface";
  * every connected account on each connection cost 1 + 2 + … + N folder lists
  * - 55 of them with ten logins. Pushes keep the lists current from there (see
  * invalidateUnifiedMailboxes); an account switch reloads them all once, as a
- * user moving between mailboxes expects fresh counters.
+ * user moving between mailboxes expects fresh counters. Adding or removing an
+ * account in another tab is still reflected without a reload.
  */
 export function useProMultiAccountMailboxes(): void {
   const isEmbedded = useIsEmbedded();

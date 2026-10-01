@@ -29,14 +29,24 @@ describe('stripLeadingCss', () => {
       'Order {A-17} confirmed',
       'Price {EUR}: 10 per box',
       'Meeting at {room',
+      '@media team, the brief is attached',
+      '@Page can you check?',
+      '@import the CSV, then send it back',
+      'Reminder: your appointment {date: 2026-10-01} is confirmed',
     ]) expect(stripLeadingCss(text)).toBe(text);
   });
 });
 
 describe('cleanPreview', () => {
   it('strips padding and a style sheet together, and treats nothing left as no preview', () => {
-    expect(cleanPreview('͏ ​.x{color:red} Real text')).toBe('Real text');
+    expect(cleanPreview('\u034f \u200b.x{color:red} Real text')).toBe('Real text');
     expect(cleanPreview('.x{color:red} ...')).toBe('');
     expect(cleanPreview(null)).toBe('');
+  });
+});
+
+describe('stripLeadingCss pseudo-classes', () => {
+  it('still drops a rule whose selector has a pseudo-class', () => {
+    expect(stripLeadingCss('a:hover, a:focus{color:red} Hello')).toBe('Hello');
   });
 });

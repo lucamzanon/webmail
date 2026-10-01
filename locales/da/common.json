@@ -18,6 +18,7 @@
     "reconnecting": "Forbindelse mistet. Forsøger at genoprette forbindelse…",
     "error": {
       "invalid_credentials": "Ugyldig e-mail eller adgangskode. Kontroller dine oplysninger og prøv igen.",
+      "invalid_token": "Serveren accepterede ikke dette adgangstoken. Kontroller, at det er komplet og ikke er udløbet eller tilbagekaldt.",
       "connection_failed": "Kan ikke nå serveren. Kontrollér din internetforbindelse og prøv igen.",
       "cors_blocked": "Serveren kan nås, men blokerer cross-origin-anmodninger. Kontrollér JMAP-serverens CORS-indstillinger og tillad dette domæne.",
       "server_error": "Serveren er midlertidigt utilgængelig. Prøv igen senere.",
@@ -29,6 +30,11 @@
     "show_password": "Vis adgangskode",
     "hide_password": "Skjul adgangskode",
     "totp_toggle": "Jeg har en 2FA-kode",
+    "token_toggle": "Log ind med et adgangstoken",
+    "password_toggle": "Log ind med adgangskode",
+    "token_label": "Adgangstoken",
+    "token_placeholder": "Indsæt dit API-token",
+    "token_hint": "Opret et API-token i indstillingerne hos din mailudbyder, og indsæt det her.",
     "remember_me": "Husk mig",
     "config_error": {
       "title": "Konfigurationsfejl",
@@ -725,6 +731,7 @@
     "recipient_name_placeholder": "Visningsnavn",
     "autocomplete_search_server": "Søg på serveren",
     "autocomplete_searching": "Søger...",
+    "mention_recipients": "Modtagere",
     "toolbar": {
       "bold": "Fed",
       "italic": "Kursiv",
@@ -842,7 +849,19 @@
     "templates_import_empty": "Ingen skabeloner fundet i filen",
     "export_email_error": "Kunne ikke eksportere e-mail",
     "import_email_success": "E-mail importeret succesfuldt",
-    "import_email_error": "Kunne ikke importere e-mail"
+    "import_email_error": "Kunne ikke importere e-mail",
+    "rule_created": "Regel oprettet",
+    "rule_merged": "Føjet til reglen “{name}”",
+    "rule_already_covered": "Er allerede dækket af reglen “{name}”",
+    "rule_apply_existing": "{count, plural, one {Anvend på # eksisterende besked} other {Anvend på # eksisterende beskeder}}",
+    "rule_applied": "{count, plural, =0 {Ingen beskeder skulle ændres} one {Regel anvendt på # besked} other {Regel anvendt på # beskeder}}",
+    "rule_apply_failed": "Reglen kunne ikke anvendes på eksisterende beskeder",
+    "rule_edit": "Rediger regel",
+    "rule_undo": "Fortryd",
+    "rule_undone": "Regelændring fortrudt",
+    "rule_undo_failed": "Regelændringen kunne ikke fortrydes",
+    "rule_undo_conflict": "Dine filtre er ændret siden. Fortryd ændringen i filterindstillingerne.",
+    "rule_folder_failed": "Mappen kunne ikke oprettes"
   },
   "date": {
     "today": "I dag",
@@ -1527,6 +1546,10 @@
         "label": "Advarsel om tomt emne",
         "description": "Bed om bekræftelse, før en besked uden emne sendes."
       },
+      "recipient_mentions": {
+        "label": "Nævn modtagere med @",
+        "description": "Når du skriver @ i beskeden, foreslås modtagerne, og den valgtes fornavn indsættes. Enter eller Tab vælger det fremhævede navn."
+      },
       "hide_inline_image_attachments": {
         "label": "Skjul indlejrede billeder fra vedhæftninger",
         "description": "Billeder indlejret i beskedteksten vises ikke som separate vedhæftninger"
@@ -1621,6 +1644,7 @@
       "auth_method_label": "Godkendelse",
       "auth_method_oauth": "Single Sign-On (OAuth/OIDC)",
       "auth_method_basic": "Adgangskode",
+      "auth_method_token": "Adgangstoken",
       "demo_account": "Demo-konto",
       "email": {
         "label": "E-mailadresse",
@@ -1978,6 +2002,32 @@
       },
       "about": {
         "title": "Bulwark Webmail"
+      },
+      "spam_siege": {
+        "title": "Spam Siege",
+        "intro": "Klik på spam og phishing, før de når din indbakke. Lad ægte mails komme igennem. Mister du alle tre skjolde, falder indbakken.",
+        "kinds": {
+          "spam": "Spam",
+          "phishing": "Phishing",
+          "legit": "Ægte mail"
+        },
+        "click_to_block": "Klik for at blokere",
+        "let_through": "Lad den komme igennem",
+        "start": "Start",
+        "play_again": "Spil igen",
+        "score": "Point",
+        "combo": "Stribebonus",
+        "shields_left": "{count} af {total} skjolde tilbage",
+        "seconds": "{seconds} s",
+        "best": "Rekord: {score}",
+        "new_best": "Ny rekord",
+        "held": "Indbakken holdt",
+        "overrun": "Indbakken blev overrendt",
+        "stats": {
+          "caught": "Blokeret",
+          "delivered": "Leveret",
+          "mistakes": "Fejl"
+        }
       }
     },
     "sidebar_apps": {
@@ -2111,7 +2161,9 @@
         "ends_with": "slutter med",
         "matches": "matcher mønster",
         "greater_than": "er større end",
-        "less_than": "er mindre end"
+        "less_than": "er mindre end",
+        "address_is": "er adressen",
+        "domain_is": "har domænet"
       },
       "action_types": {
         "move": "Flyt til mappe",
@@ -2186,7 +2238,26 @@
         "actions_count": "{count, plural, one {# handling} other {# handlinger}}"
       },
       "origin_external": "Ekstern",
-      "managed_by_tooltip": "Administreres af {source}. Redigér det i den pågældende app, eller brug raw Sieve-editoren."
+      "managed_by_tooltip": "Administreres af {source}. Redigér det i den pågældende app, eller brug raw Sieve-editoren.",
+      "quick_rule_names": {
+        "move_sender": "Flyt fra {sender} til {folder}",
+        "move_domain": "Flyt fra @{domain} til {folder}",
+        "move_list": "Flyt listen {list} til {folder}",
+        "mark_read": "Markér fra {sender} som læst",
+        "tag": "Tag fra {sender} som {tag}",
+        "block": "Bloker {sender}",
+        "custom": "Beskeder fra {sender}",
+        "custom_plain": "Ny regel",
+        "senders": "{count, plural, one {# afsender} other {# afsendere}}"
+      },
+      "suggestions": "Forslag",
+      "suggest_subject": "Emne “{subject}”",
+      "suggest_to": "Til {address}",
+      "suggest_cc": "Cc {address}",
+      "suggest_list": "List-Id",
+      "suggest_domain": "@{domain}",
+      "apply_existing": "Anvend også på beskeder, der allerede ligger i denne mappe",
+      "apply_existing_unsupported": "Kun regler, der tjekker afsender, modtagere, emne eller headere, og som flytter, kopierer, markerer som læst, stjernemarkerer eller tagger, kan anvendes på eksisterende beskeder."
     },
     "templates": {
       "title": "E-mail-skabeloner",
@@ -2322,7 +2393,22 @@
     "cancel_scheduled_send": "Annuller afsendelse",
     "reschedule_send": "Planlæg om",
     "cancel_and_edit": "Annuller og redigér",
-    "cancel_and_compose_again": "Annuller og skriv igen"
+    "cancel_and_compose_again": "Annuller og skriv igen",
+    "rules": {
+      "title": "Regler",
+      "move_from": "Flyt altid beskeder fra {sender}",
+      "move_from_domain": "Flyt altid beskeder fra @{domain}",
+      "move_from_list": "Flyt altid beskeder fra denne liste",
+      "mark_read_from": "Markér altid beskeder fra {sender} som læst",
+      "tag_with": "Tilføj altid tagget",
+      "block": "{count, plural, one {Bloker afsender} other {Bloker # afsendere}}",
+      "no_junk": "Denne konto har ingen mappe til uønsket mail",
+      "create": "Opret regel…",
+      "manage": "Administrer regler",
+      "senders_count": "{count, plural, one {# afsender} other {# afsendere}}",
+      "cross_account": "Vælg beskeder fra én konto",
+      "opaque_hint": "Dine filtre er redigeret manuelt. Åbn filterindstillingerne"
+    }
   },
   "mailbox_context_menu": {
     "mark_folder_read": "Markér mappe som læst",
@@ -2911,6 +2997,7 @@
       "save_note": "Gem",
       "note_saved": "Note tilføjet",
       "open_link": "Åbn link",
+      "copy_location": "Kopiér sted",
       "meeting_link": "Mødelink",
       "tentative": "Foreløbig",
       "cancelled": "Aflyst",

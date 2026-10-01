@@ -84,7 +84,7 @@ Then open `http://localhost:3000`. A setup wizard asks for your Stalwart server 
 
 [Updating](https://bulwarkmail.org/docs/deployment/updating) explains how to move to a new version.
 
-Container images and release files published after 1.11.2 come with a signed build provenance attestation. To check that one was built by this repository's workflows, run `gh attestation verify oci://ghcr.io/bulwarkmail/webmail:<version> --owner bulwarkmail` for an image, or `gh attestation verify <file> --repo bulwarkmail/webmail` for a downloaded file. Release files also have a `.sha256` next to them.
+Container images and release files from 1.12.0 on come with a signed build provenance attestation. To check that one was built by this repository's workflows, run `gh attestation verify oci://ghcr.io/bulwarkmail/webmail:<version> --owner bulwarkmail` for an image, or `gh attestation verify <file> --repo bulwarkmail/webmail` for a downloaded file. Release files also have a `.sha256` next to them.
 
 ## Configuration
 
@@ -156,7 +156,7 @@ Contributors can use AI tools too, as long as they use capable, current models a
 
 ## License
 
-[GNU AGPL v3](LICENSE). This repository preserves the original MIT attribution for the fork lineage in [NOTICE](NOTICE).
+[GNU AGPL v3 only](LICENSE), with an additional permission to distribute apps built from this code through app stores such as the Apple App Store and Google Play. The permission is provisional until every earlier contributor has agreed to it ([consent request](https://github.com/orgs/bulwarkmail/discussions/1113)); contributions made since 30 September 2026 are already covered. This repository preserves the original MIT attribution for the fork lineage in [NOTICE](NOTICE).
 
 ## Acknowledgments
 

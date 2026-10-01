@@ -282,7 +282,7 @@ export function JmapServersSection({ value, source, onChange, onRevert }: Props)
                     className="h-8 w-full rounded-md border border-input bg-background px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   />
                   <p className="mt-1 text-[11px] text-muted-foreground">
-                    A server with its own client ID offers OAuth sign-in even while OAuth is off globally.
+                    With a client ID, this label gives the server its own sign-in button on the login page, whichever server is selected and even while OAuth is off globally.
                   </p>
                 </div>
               </div>

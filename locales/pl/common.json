@@ -18,6 +18,7 @@
     "reconnecting": "Utracono połączenie. Próba ponownego połączenia…",
     "error": {
       "invalid_credentials": "Nieprawidłowy adres e-mail lub hasło. Sprawdź dane logowania i spróbuj ponownie.",
+      "invalid_token": "Serwer nie zaakceptował tego tokenu dostępu. Sprawdź, czy jest kompletny i czy nie wygasł ani nie został unieważniony.",
       "connection_failed": "Nie można połączyć się z serwerem. Sprawdź połączenie internetowe i spróbuj ponownie.",
       "cors_blocked": "Serwer jest osiągalny, ale blokuje żądania między domenami. Sprawdź ustawienia CORS serwera JMAP i zezwól na tę domenę.",
       "server_error": "Serwer jest tymczasowo niedostępny. Spróbuj ponownie później.",
@@ -29,6 +30,11 @@
     "show_password": "Pokaż hasło",
     "hide_password": "Ukryj hasło",
     "totp_toggle": "Mam kod 2FA",
+    "token_toggle": "Zaloguj się tokenem dostępu",
+    "password_toggle": "Zaloguj się hasłem",
+    "token_label": "Token dostępu",
+    "token_placeholder": "Wklej swój token API",
+    "token_hint": "Utwórz token API w ustawieniach swojego dostawcy poczty i wklej go tutaj.",
     "remember_me": "Zapamiętaj mnie",
     "config_error": {
       "title": "Błąd konfiguracji",
@@ -725,6 +731,7 @@
     "recipient_name_placeholder": "Wyświetlana nazwa",
     "autocomplete_search_server": "Szukaj na serwerze",
     "autocomplete_searching": "Wyszukiwanie...",
+    "mention_recipients": "Odbiorcy",
     "toolbar": {
       "bold": "Pogrubienie",
       "italic": "Kursywa",
@@ -842,7 +849,19 @@
     "templates_import_empty": "Nie znaleziono szablonów w pliku",
     "export_email_error": "Nie udało się wyeksportować wiadomości",
     "import_email_success": "Wiadomość zaimportowana pomyślnie",
-    "import_email_error": "Nie udało się zaimportować wiadomości"
+    "import_email_error": "Nie udało się zaimportować wiadomości",
+    "rule_created": "Utworzono regułę",
+    "rule_merged": "Dodano do reguły „{name}”",
+    "rule_already_covered": "Już obejmuje to reguła „{name}”",
+    "rule_apply_existing": "{count, plural, one {Zastosuj do # istniejącej wiadomości} few {Zastosuj do # istniejących wiadomości} many {Zastosuj do # istniejących wiadomości} other {Zastosuj do # istniejącej wiadomości}}",
+    "rule_applied": "{count, plural, =0 {Żadna wiadomość nie wymagała zmian} one {Zastosowano regułę do # wiadomości} few {Zastosowano regułę do # wiadomości} many {Zastosowano regułę do # wiadomości} other {Zastosowano regułę do # wiadomości}}",
+    "rule_apply_failed": "Nie udało się zastosować reguły do istniejących wiadomości",
+    "rule_edit": "Edytuj regułę",
+    "rule_undo": "Cofnij",
+    "rule_undone": "Cofnięto zmianę reguły",
+    "rule_undo_failed": "Nie udało się cofnąć zmiany reguły",
+    "rule_undo_conflict": "Twoje filtry zmieniły się w międzyczasie. Cofnij zmianę w ustawieniach filtrów.",
+    "rule_folder_failed": "Nie udało się utworzyć folderu"
   },
   "date": {
     "today": "Dzisiaj",
@@ -1524,6 +1543,10 @@
         "label": "Ostrzeżenie o pustym temacie",
         "description": "Poproś o potwierdzenie przed wysłaniem wiadomości bez tematu."
       },
+      "recipient_mentions": {
+        "label": "Wspominaj odbiorców za pomocą @",
+        "description": "Wpisanie @ w wiadomości podpowiada jej odbiorców i wstawia imię wybranego. Enter lub Tab wybiera podświetlone imię."
+      },
       "hide_inline_image_attachments": {
         "label": "Ukryj obrazy osadzone z listy załączników",
         "description": "Obrazy osadzone w treści wiadomości nie są wyświetlane jako osobne załączniki"
@@ -1618,6 +1641,7 @@
       "auth_method_label": "Uwierzytelnianie",
       "auth_method_oauth": "Single Sign-On (OAuth/OIDC)",
       "auth_method_basic": "Hasło",
+      "auth_method_token": "Token dostępu",
       "demo_account": "Konto demo",
       "email": {
         "label": "Adres e-mail",
@@ -1975,6 +1999,32 @@
       },
       "about": {
         "title": "Bulwark Webmail"
+      },
+      "spam_siege": {
+        "title": "Spam Siege",
+        "intro": "Klikaj spam i phishing, zanim dotrą do Twojej skrzynki odbiorczej. Prawdziwą pocztę przepuszczaj. Stracisz wszystkie trzy tarcze i skrzynka padnie.",
+        "kinds": {
+          "spam": "Spam",
+          "phishing": "Phishing",
+          "legit": "Prawdziwa poczta"
+        },
+        "click_to_block": "Kliknij, aby zablokować",
+        "let_through": "Przepuść",
+        "start": "Start",
+        "play_again": "Zagraj ponownie",
+        "score": "Wynik",
+        "combo": "Bonus za serię",
+        "shields_left": "Pozostało {count} z {total} tarcz",
+        "seconds": "{seconds} s",
+        "best": "Rekord: {score}",
+        "new_best": "Nowy rekord",
+        "held": "Skrzynka obroniona",
+        "overrun": "Skrzynka zalana",
+        "stats": {
+          "caught": "Zablokowane",
+          "delivered": "Dostarczone",
+          "mistakes": "Błędy"
+        }
       }
     },
     "sidebar_apps": {
@@ -2108,7 +2158,9 @@
         "ends_with": "kończy się na",
         "matches": "pasuje do wzorca",
         "greater_than": "jest większe niż",
-        "less_than": "jest mniejsze niż"
+        "less_than": "jest mniejsze niż",
+        "address_is": "to adres",
+        "domain_is": "ma domenę"
       },
       "action_types": {
         "move": "Przenieś do folderu",
@@ -2183,7 +2235,26 @@
         "actions_count": "{count, plural, one {# akcja} other {# akcji}}"
       },
       "origin_external": "Zewnętrzny",
-      "managed_by_tooltip": "Zarządzane przez {source}. Edytuj w tej aplikacji lub użyj surowego edytora Sieve."
+      "managed_by_tooltip": "Zarządzane przez {source}. Edytuj w tej aplikacji lub użyj surowego edytora Sieve.",
+      "quick_rule_names": {
+        "move_sender": "Przenoś od {sender} do {folder}",
+        "move_domain": "Przenoś od @{domain} do {folder}",
+        "move_list": "Przenoś listę {list} do {folder}",
+        "mark_read": "Oznaczaj od {sender} jako przeczytane",
+        "tag": "Oznaczaj od {sender} etykietą {tag}",
+        "block": "Blokuj {sender}",
+        "custom": "Wiadomości od {sender}",
+        "custom_plain": "Nowa reguła",
+        "senders": "{count, plural, one {# nadawcy} few {# nadawców} many {# nadawców} other {# nadawcy}}"
+      },
+      "suggestions": "Sugestie",
+      "suggest_subject": "Temat „{subject}”",
+      "suggest_to": "Do {address}",
+      "suggest_cc": "DW {address}",
+      "suggest_list": "List-Id",
+      "suggest_domain": "@{domain}",
+      "apply_existing": "Zastosuj też do wiadomości, które już są w tym folderze",
+      "apply_existing_unsupported": "Do istniejących wiadomości można zastosować tylko reguły, które sprawdzają nadawcę, odbiorców, temat lub nagłówki i które przenoszą, kopiują, oznaczają jako przeczytane, oznaczają gwiazdką lub etykietą."
     },
     "templates": {
       "title": "Szablony wiadomości e-mail",
@@ -2322,7 +2393,22 @@
     "cancel_scheduled_send": "Anuluj wysyłkę",
     "reschedule_send": "Przełóż",
     "cancel_and_edit": "Anuluj i edytuj",
-    "cancel_and_compose_again": "Anuluj i napisz ponownie"
+    "cancel_and_compose_again": "Anuluj i napisz ponownie",
+    "rules": {
+      "title": "Reguły",
+      "move_from": "Zawsze przenoś wiadomości od {sender}",
+      "move_from_domain": "Zawsze przenoś wiadomości od @{domain}",
+      "move_from_list": "Zawsze przenoś wiadomości z tej listy",
+      "mark_read_from": "Zawsze oznaczaj wiadomości od {sender} jako przeczytane",
+      "tag_with": "Zawsze oznaczaj etykietą",
+      "block": "{count, plural, =1 {Zablokuj nadawcę} one {Zablokuj # nadawcę} few {Zablokuj # nadawców} many {Zablokuj # nadawców} other {Zablokuj # nadawcy}}",
+      "no_junk": "To konto nie ma folderu spamu",
+      "create": "Utwórz regułę…",
+      "manage": "Zarządzaj regułami",
+      "senders_count": "{count, plural, one {# nadawcy} few {# nadawców} many {# nadawców} other {# nadawcy}}",
+      "cross_account": "Wybierz wiadomości z jednego konta",
+      "opaque_hint": "Twoje filtry zostały edytowane ręcznie. Otwórz ustawienia filtrów"
+    }
   },
   "mailbox_context_menu": {
     "mark_folder_read": "Oznacz folder jako przeczytany",
@@ -2911,6 +2997,7 @@
       "save_note": "Zapisz",
       "note_saved": "Dodano notatkę",
       "open_link": "Otwórz link",
+      "copy_location": "Kopiuj lokalizację",
       "meeting_link": "Link do spotkania",
       "tentative": "Wstępnie",
       "cancelled": "Odwołane",

@@ -945,10 +945,9 @@ export function Sidebar({
   // became of the logins that did not make it.
   const unifiedScope = useEmailStore((s) => s.unifiedScope);
   const restoringAccounts = useAuthStore((s) => s.restoringAccounts);
-  const registeredAccounts = useAccountStore((s) => s.accounts);
   const unifiedProgress = useMemo(() => unifiedLoadProgress({
-    crossAccountActive, restoring: restoringAccounts, scope: unifiedScope, accounts: registeredAccounts,
-  }), [crossAccountActive, restoringAccounts, registeredAccounts, unifiedScope]);
+    crossAccountActive, restoring: restoringAccounts, scope: unifiedScope, accounts,
+  }), [crossAccountActive, restoringAccounts, accounts, unifiedScope]);
   const t = useTranslations('sidebar');
 
   useEffect(() => {
@@ -1335,11 +1334,11 @@ export function Sidebar({
               status={unifiedProgress && (
                 <span
                   className="ms-2 text-xs font-normal tabular-nums text-muted-foreground animate-pulse"
-                  aria-label={t("all_accounts_loading", unifiedProgress)}
                   title={t("all_accounts_loading", unifiedProgress)}
                   data-testid="unified-accounts-loading"
                 >
-                  {unifiedProgress.loaded}/{unifiedProgress.total}
+                  <span aria-hidden="true">{unifiedProgress.loaded}/{unifiedProgress.total}</span>
+                  <span className="sr-only">{t("all_accounts_loading", unifiedProgress)}</span>
                 </span>
               )}
             />

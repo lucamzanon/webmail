@@ -65,7 +65,9 @@ import {
   ICON_MAP,
 } from "@/lib/email-composer-utils";
 import { isValidEmail } from "@/lib/validation";
+import { buildMentionCandidates } from "@/lib/recipient-mentions";
 import { RichTextEditor } from "@/components/email/rich-text-editor";
+import { isRecipientMentionActive } from "@/components/email/recipient-mention";
 import type { Editor } from "@tiptap/react";
 import { htmlToPlainText as htmlToPlainTextShared } from "@/lib/html-to-text";
 import { fileStorage } from "@/lib/plugin-storage";
@@ -131,7 +133,7 @@ export interface ComposerDraftData {
    * File). Without these the composer starts with zero attachments and the
    * next save/send rebuilds the draft without them - silent data loss (#849).
    */
-  attachments?: Array<{ blobId: string; name?: string; type?: string; size: number; cid?: string; disposition?: string }>;
+  attachments?: Array<{ blobId: string; name?: string; type?: string; size: number; cid?: string; disposition?: string; sourceAccountId?: string }>;
   /** When set, overrides the header From: and the envelope MAIL FROM, where the server allows it. */
   fromOverrideEmail?: string;
   fromOverrideName?: string;
@@ -244,6 +246,10 @@ interface EmailComposerProps {
 
 type ComposerAttachment = {
   file?: File;
+  // Login whose server holds `blobId`, set for parts of the original message
+  // on a forward - the message may go out through another account, which
+  // cannot resolve them. See rehomeForeignBlobs.
+  sourceAccountId?: string;
   name: string;
   type: string;
   size: number;
@@ -268,10 +274,6 @@ type ComposerAttachment = {
   // so these must be re-resolved against the new version after every save -
   // otherwise the next save references dead blobs and fails (#849).
   fromDraftPart?: boolean;
-  // Login whose server holds `blobId`, set for parts of the original message
-  // on a forward - the message may go out through another account, which
-  // cannot resolve them. See rehomeForeignBlobs.
-  sourceClientAccountId?: string;
 };
 
 function formatLocalDateTimeInput(date: Date): string {
@@ -322,6 +324,7 @@ export function EmailComposer({
   const attachmentReminderEnabled = useSettingsStore((state) => state.attachmentReminderEnabled);
   const attachmentReminderKeywords = useSettingsStore((state) => state.attachmentReminderKeywords);
   const emptySubjectWarningEnabled = useSettingsStore((state) => state.emptySubjectWarningEnabled);
+  const recipientMentionsEnabled = useSettingsStore((state) => state.recipientMentionsEnabled);
   const updateSetting = useSettingsStore((state) => state.updateSetting);
   const sendDelaySeconds = useSettingsStore((state) => state.sendDelaySeconds);
   const signaturePosition = useSettingsStore((state) => state.signaturePosition);
@@ -669,6 +672,9 @@ export function EmailComposer({
           blobId: att.blobId,
           ...(att.cid ? { cid: att.cid } : {}),
           ...(att.disposition === 'inline' ? { disposition: 'inline' as const } : {}),
+          // A forward stashed before its first save still holds the original
+          // account's blobs: keep the tag so they are copied before saving.
+          ...(att.sourceAccountId ? { sourceAccountId: att.sourceAccountId } : {}),
           fromDraftPart: true,
         }));
     }
@@ -690,12 +696,12 @@ export function EmailComposer({
           type: att.type || 'application/octet-stream',
           size: att.size,
           blobId: att.blobId,
-          sourceClientAccountId: replyTo.sourceClientAccountId,
+          sourceAccountId: sourceAccountId ?? undefined,
         }));
     }
     return [];
   });
-  const inlineImagesRef = useRef<Array<{ cid: string; blobId: string; type: string; name: string; size: number; dataUrl: string; sourceClientAccountId?: string }>>([]);
+  const inlineImagesRef = useRef<Array<{ cid: string; blobId: string; type: string; name: string; size: number; dataUrl: string; sourceAccountId?: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [validationErrors, setValidationErrors] = useState<{ to?: boolean; body?: boolean }>({});
   const [shakeField, setShakeField] = useState<string | null>(null);
@@ -776,43 +782,44 @@ export function EmailComposer({
   const composerAccountId = currentIdentityParts.localAccountId ?? activeAccountId ?? undefined;
 
   // Forwarded attachments and quoted inline images reference part blobs of the
-  // original message, which only the account that received it can resolve.
-  // When the message goes out through another account - a unified-view
-  // message forwarded from the active login, or a From picked from another
-  // account - those blobs are copied over first, or Email/set fails with
-  // blobNotFound. Blob/copy can't do it: every login is its own JMAP session.
-  const rehomeForeignBlobs = async (): Promise<void> => {
+  // original message, which only the account that holds it can resolve. When
+  // the message goes out through another account - a From picked by hand from
+  // another account's identities - those blobs are copied over first, or
+  // Email/set fails with blobNotFound. Blob/copy cannot do it: every login is
+  // its own JMAP session. Each part is copied once; later saves reuse it.
+  // Quoted inline images are only used at send time, so they are copied only
+  // when `inlineCids` names the ones the body still shows.
+  const rehomeForeignBlobs = async (inlineCids?: ReadonlySet<string>): Promise<void> => {
     const target = composerClient;
     if (!target || !composerAccountId) return;
     const isForeign = (owner?: string) => !!owner && owner !== composerAccountId;
-    const copyBlob = async (part: { blobId: string; name: string; type: string; sourceClientAccountId?: string }) => {
-      const source = useAuthStore.getState().getClientForAccount(part.sourceClientAccountId!);
-      if (!source) throw new Error(`No connected client for account ${part.sourceClientAccountId}`);
+    const copyBlob = async (part: { blobId: string; name: string; type: string; sourceAccountId?: string }) => {
+      const source = useAuthStore.getState().getClientForAccount(part.sourceAccountId!);
+      if (!source) throw new Error(`No connected client for account ${part.sourceAccountId}`);
       const buffer = await source.fetchBlobArrayBuffer(part.blobId, part.name, part.type);
       const { blobId } = await target.uploadBlob(new File([buffer], part.name, { type: part.type }));
       return blobId;
     };
 
-    const moved = new Map<ComposerAttachment, ComposerAttachment>();
-    for (const att of attachmentsRef.current) {
-      if (!att.blobId || att.uploading || !isForeign(att.sourceClientAccountId)) continue;
+    for (const att of [...attachmentsRef.current]) {
+      if (!att.blobId || att.uploading || !isForeign(att.sourceAccountId)) continue;
       const blobId = await copyBlob({ ...att, blobId: att.blobId });
-      moved.set(att, { ...att, blobId, sourceClientAccountId: composerAccountId });
-    }
-    if (moved.size) {
-      const remap = (list: ComposerAttachment[]) => list.map(att => moved.get(att) ?? att);
-      // Ref first, synchronously: callers read attachmentsRef right after.
-      attachmentsRef.current = remap(attachmentsRef.current);
-      setAttachments(remap);
+      const copied = { ...att, blobId, sourceAccountId: composerAccountId };
+      // Recorded part by part, so a failure further on does not copy this one
+      // again on the retry. Ref first, synchronously: callers read
+      // attachmentsRef right after.
+      const swap = (list: ComposerAttachment[]) => list.map(a => (a === att ? copied : a));
+      attachmentsRef.current = swap(attachmentsRef.current);
+      setAttachments(swap);
     }
 
+    if (!inlineCids?.size) return;
     for (const entry of inlineImagesRef.current) {
-      if (!isForeign(entry.sourceClientAccountId)) continue;
+      if (!inlineCids.has(entry.cid) || !isForeign(entry.sourceAccountId)) continue;
       entry.blobId = await copyBlob(entry);
-      entry.sourceClientAccountId = composerAccountId;
+      entry.sourceAccountId = composerAccountId;
     }
   };
-
   // RFC 5322 §3.6.4 threading for this message: computed from the original
   // on a reply (not a forward), carried over from a re-opened reply draft.
   // Drafts store it too, so a reply stays in its thread when re-opened or
@@ -1033,10 +1040,10 @@ export function EmailComposer({
   useEffect(() => {
     if (plainTextMode) return;
     if (mode !== 'reply' && mode !== 'replyAll' && mode !== 'forward') return;
-    // The quoted parts live on the original message's account, which is not
-    // necessarily the one this reply goes out through.
-    const originClient = (replyTo?.sourceClientAccountId
-      ? useAuthStore.getState().getClientForAccount(replyTo.sourceClientAccountId)
+    // The quoted parts live on the account that holds the original message,
+    // which is not necessarily the one this message goes out through.
+    const originClient = (sourceAccountId && sourceAccountId !== composerAccountId
+      ? useAuthStore.getState().getClientForAccount(sourceAccountId)
       : undefined) ?? composerClient;
     if (!originClient || !replyTo?.attachments?.length) return;
 
@@ -1066,7 +1073,7 @@ export function EmailComposer({
         name: att.name || 'inline',
         size: att.size,
         dataUrl: '',
-        sourceClientAccountId: replyTo.sourceClientAccountId,
+        sourceAccountId: sourceAccountId ?? undefined,
       });
     }
 
@@ -1191,6 +1198,10 @@ export function EmailComposer({
   const ccStr = formatRecipientList(withInput(cc, ccInput));
   const bccStr = formatRecipientList(withInput(bcc, bccInput));
 
+  // Who an "@" in the body offers. Never Bcc: naming a blind-copied
+  // recipient in the text would disclose them to everyone else.
+  const mentionCandidates = useMemo(() => buildMentionCandidates(to, cc), [to, cc]);
+
   // Uploaded/hydrated attachments in ComposerDraftData shape, so a state
   // snapshot (pro tab move, unmount save) carries them across a remount
   // instead of silently dropping them (#849). In-flight/failed uploads have
@@ -1204,6 +1215,7 @@ export function EmailComposer({
       size: att.size,
       ...(att.cid ? { cid: att.cid } : {}),
       ...(att.disposition ? { disposition: att.disposition } : {}),
+      ...(att.sourceAccountId ? { sourceAccountId: att.sourceAccountId } : {}),
     }));
 
   // Keep a ref to current state for the unmount save
@@ -2209,6 +2221,12 @@ export function EmailComposer({
     return undefined;
   };
 
+  // The cids of the inline images (tagged with data-cid) the body still shows.
+  const bodyInlineCids = (html: string): Set<string> => {
+    const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
+    return new Set(Array.from(doc.querySelectorAll('img[data-cid]'), (img) => img.getAttribute('data-cid') ?? ''));
+  };
+
   // Rewrite data: URLs of dropped images (tagged with data-cid) into cid:
   // references so recipient clients that strip data URIs can still render them.
   const rewriteInlineImages = (html: string): {
@@ -2427,17 +2445,26 @@ export function EmailComposer({
       ? (signatureAlreadyInBody ? body : appendPlainTextSignature(body, signatureIdentity, signatureOpts))
       : (signatureAlreadyInBody ? htmlToPlainText(body) : appendPlainTextSignature(htmlToPlainText(body), signatureIdentity, signatureOpts));
 
+    // Before any blobId is read: forwarded parts may still sit on the account
+    // that holds the original message.
     try {
-      // Before any blobId is read: forwarded parts may still sit on the
-      // original message's account.
-      await rehomeForeignBlobs();
+      await rehomeForeignBlobs(plainTextMode ? undefined : bodyInlineCids(body));
+    } catch (error) {
+      // Nothing was sent; the composer and its draft stay as they are.
+      debug.warn('email', 'Failed to copy forwarded parts to the sending account:', error);
+      toast.error(t('validation.attachment_upload_failed'));
+      isSendingRef.current = false;
+      setIsSending(false);
+      return;
+    }
 
-      const rewritten = plainTextMode ? null : rewriteInlineImages(body);
-      const finalHtmlBody = plainTextMode
-        ? undefined
-        : `<div>${rewritten!.html}</div>${buildSignatureHtml()}`;
-      const inlineAttachments = rewritten?.attachments ?? [];
+    const rewritten = plainTextMode ? null : rewriteInlineImages(body);
+    const finalHtmlBody = plainTextMode
+      ? undefined
+      : `<div>${rewritten!.html}</div>${buildSignatureHtml()}`;
+    const inlineAttachments = rewritten?.attachments ?? [];
 
+    try {
       const effectiveDelayedUntil = await resolveDelayedUntil(delayedUntil);
       // Let plugins veto the send (external-mail warning, mistyped-domain
       // guards, etc.). Returning false from any handler aborts before either
@@ -2746,6 +2773,9 @@ export function EmailComposer({
 
     if (isPlainEscape) {
       if (activeAutoField) return;
+      // Same for the "@" recipient list in the body: this handler runs in the
+      // capture phase, before the editor could close the list itself.
+      if (isRecipientMentionActive(editorRef.current)) return;
       e.preventDefault();
       handleClose();
       return;
@@ -3204,6 +3234,7 @@ export function EmailComposer({
               placeholder={t('body_placeholder')}
               hasError={validationErrors.body}
               onEditorReady={(ed) => { editorRef.current = ed; }}
+              mentionCandidates={recipientMentionsEnabled ? mentionCandidates : undefined}
             />
           </div>
         )}

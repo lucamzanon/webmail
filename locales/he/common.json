@@ -14,6 +14,7 @@
     "reconnecting": "החיבור אבד. מנסה להתחבר מחדש...",
     "error": {
       "invalid_credentials": "אימייל או סיסמה לא חוקיים. אנא בדוק את האישורים שלך ונסה שוב.",
+      "invalid_token": "השרת לא קיבל את אסימון הגישה הזה. בדוק שהוא הועתק במלואו, שתוקפו לא פג ושהוא לא בוטל.",
       "connection_failed": "לא ניתן להגיע לשרת. בדוק את חיבור האינטרנט שלך ונסה שוב.",
       "cors_blocked": "השרת נגיש אך חוסם בקשות חוצות מוצא. בדוק את הגדרות CORS של שרת ה-JMAP שלך ואפשר את הדומיין הזה.",
       "server_error": "השרת אינו זמין באופן זמני. אנא נסה שוב מאוחר יותר.",
@@ -25,6 +26,11 @@
     "show_password": "הצג סיסמה",
     "hide_password": "הסתר את הסיסמה",
     "totp_toggle": "יש לי קוד 2FA",
+    "token_toggle": "כניסה באמצעות אסימון גישה",
+    "password_toggle": "כניסה באמצעות סיסמה",
+    "token_label": "אסימון גישה",
+    "token_placeholder": "הדבק את אסימון ה-API שלך",
+    "token_hint": "צור אסימון API בהגדרות של ספק הדואר שלך והדבק אותו כאן.",
     "remember_me": "תזכור אותי",
     "config_error": {
       "title": "שגיאת תצורה",
@@ -690,6 +696,7 @@
     "recipient_name_placeholder": "שם תצוגה",
     "autocomplete_search_server": "חיפוש בשרת",
     "autocomplete_searching": "מחפש...",
+    "mention_recipients": "נמענים",
     "toolbar": {
       "bold": "מודגש",
       "italic": "נטוי",
@@ -807,7 +814,19 @@
     "templates_import_empty": "לא נמצאו תבניות בקובץ",
     "export_email_error": "ייצוא האימייל נכשל",
     "import_email_success": "אימייל יובא בהצלחה",
-    "import_email_error": "ייבוא האימייל נכשל"
+    "import_email_error": "ייבוא האימייל נכשל",
+    "rule_created": "הכלל נוצר",
+    "rule_merged": "נוסף לכלל „{name}”",
+    "rule_already_covered": "כבר מכוסה על ידי הכלל „{name}”",
+    "rule_apply_existing": "{count, plural, one {החל על הודעה קיימת אחת} other {החל על # הודעות קיימות}}",
+    "rule_applied": "{count, plural, =0 {אף הודעה לא דרשה שינוי} one {הכלל הוחל על הודעה אחת} other {הכלל הוחל על # הודעות}}",
+    "rule_apply_failed": "לא ניתן היה להחיל את הכלל על הודעות קיימות",
+    "rule_edit": "ערוך כלל",
+    "rule_undo": "בטל",
+    "rule_undone": "שינוי הכלל בוטל",
+    "rule_undo_failed": "לא ניתן היה לבטל את שינוי הכלל",
+    "rule_undo_conflict": "המסננים שלך השתנו מאז. בטל את השינוי בהגדרות המסננים.",
+    "rule_folder_failed": "לא ניתן היה ליצור את התיקייה"
   },
   "date": {
     "today": "היום",
@@ -1489,6 +1508,10 @@
         "label": "אזהרה על נושא ריק",
         "description": "בקש אישור לפני שליחת הודעה ללא נושא."
       },
+      "recipient_mentions": {
+        "label": "אזכור נמענים עם @",
+        "description": "הקלדת @ בהודעה מציעה את הנמענים ומכניסה את השם הפרטי של הנמען שנבחר. Enter או Tab בוחרים את השם המסומן."
+      },
       "hide_inline_image_attachments": {
         "label": "הסתר תמונות מוטבעות מקבצים מצורפים",
         "description": "תמונות מוטבעות בגוף ההודעה אינן מופיעות כקבצים מצורפים נפרדים"
@@ -1583,6 +1606,7 @@
       "auth_method_label": "אימות",
       "auth_method_oauth": "כניסה יחידה (OAuth/OIDC)",
       "auth_method_basic": "סִיסמָה",
+      "auth_method_token": "אסימון גישה",
       "demo_account": "חשבון הדגמה",
       "email": {
         "label": "כתובת אימייל",
@@ -1938,6 +1962,32 @@
       "about": {
         "title": "Bulwark Webmail"
       },
+      "spam_siege": {
+        "title": "Spam Siege",
+        "intro": "לחצו על ספאם ופישינג לפני שהם מגיעים לתיבת הדואר הנכנס. תנו לדואר אמיתי לעבור. אם תאבדו את שלושת המגנים, התיבה נופלת.",
+        "kinds": {
+          "spam": "ספאם",
+          "phishing": "פישינג",
+          "legit": "דואר אמיתי"
+        },
+        "click_to_block": "לחצו לחסימה",
+        "let_through": "תנו לעבור",
+        "start": "התחלה",
+        "play_again": "משחק חוזר",
+        "score": "ניקוד",
+        "combo": "בונוס רצף",
+        "shields_left": "נותרו {count} מתוך {total} מגנים",
+        "seconds": "{seconds} ש׳",
+        "best": "שיא: {score}",
+        "new_best": "שיא חדש",
+        "held": "התיבה הוגנה",
+        "overrun": "התיבה נפרצה",
+        "stats": {
+          "caught": "נחסמו",
+          "delivered": "נמסרו",
+          "mistakes": "טעויות"
+        }
+      },
       "show_avatars_in_junk": {
         "label": "הצג אווטרים בתיקייה זבל",
         "description": "הצג תמונות פרופיל וייקוני אתרים עבור שולחים בתיקייה זבל. מושבת כברירת מחדל כדי להימנע מהענקת לגיטימציה חזותית לניסיונות דיוג."
@@ -2028,7 +2078,9 @@
         "greater_than": "גדול מ",
         "less_than": "הוא פחות מ",
         "has_any": "קיים",
-        "has_type": "מסוג"
+        "has_type": "מסוג",
+        "address_is": "הוא הכתובת",
+        "domain_is": "שייך לדומיין"
       },
       "action_types": {
         "move": "העבר לתיקיה",
@@ -2105,7 +2157,26 @@
       "attachment_type_placeholder": "למשל pdf, doc, jpg",
       "value_placeholder_multi": "ערך (מרובים מופרדים בפסיקים)",
       "origin_external": "חיצוני",
-      "managed_by_tooltip": "מנוהל על ידי {source}. ערוך אותו ביישום זה, או השתמש בעורך Sieve הגולמי."
+      "managed_by_tooltip": "מנוהל על ידי {source}. ערוך אותו ביישום זה, או השתמש בעורך Sieve הגולמי.",
+      "quick_rule_names": {
+        "move_sender": "העבר מ-{sender} אל {folder}",
+        "move_domain": "העבר מ-@{domain} אל {folder}",
+        "move_list": "העבר את הרשימה {list} אל {folder}",
+        "mark_read": "סמן כנקראו מ-{sender}",
+        "tag": "הוסף תווית {tag} להודעות מ-{sender}",
+        "block": "חסום את {sender}",
+        "custom": "הודעות מ-{sender}",
+        "custom_plain": "כלל חדש",
+        "senders": "{count, plural, one {שולח אחד} other {# שולחים}}"
+      },
+      "suggestions": "הצעות",
+      "suggest_subject": "נושא „{subject}”",
+      "suggest_to": "אל {address}",
+      "suggest_cc": "עותק {address}",
+      "suggest_list": "List-Id",
+      "suggest_domain": "@{domain}",
+      "apply_existing": "החל גם על הודעות שכבר נמצאות בתיקייה זו",
+      "apply_existing_unsupported": "אפשר להחיל על הודעות קיימות רק כללים שבודקים שולח, נמענים, נושא או כותרות, ושמעבירים, מעתיקים, מסמנים כנקרא, בכוכב או בתווית."
     },
     "templates": {
       "title": "תבניות דואר אלקטרוני",
@@ -2288,7 +2359,22 @@
     "cancel_scheduled_send": "ביטול שליחה",
     "reschedule_send": "תזמן מחדש",
     "cancel_and_edit": "בטל וערוך",
-    "cancel_and_compose_again": "בטל והרכיב שוב"
+    "cancel_and_compose_again": "בטל והרכיב שוב",
+    "rules": {
+      "title": "כללים",
+      "move_from": "תמיד להעביר הודעות מ-{sender}",
+      "move_from_domain": "תמיד להעביר הודעות מ-@{domain}",
+      "move_from_list": "תמיד להעביר הודעות מרשימה זו",
+      "mark_read_from": "תמיד לסמן הודעות מ-{sender} כנקראו",
+      "tag_with": "תמיד להוסיף תווית",
+      "block": "{count, plural, one {חסום שולח} other {חסום # שולחים}}",
+      "no_junk": "לחשבון זה אין תיקיית דואר זבל",
+      "create": "צור כלל…",
+      "manage": "ניהול כללים",
+      "senders_count": "{count, plural, one {שולח אחד} other {# שולחים}}",
+      "cross_account": "בחר הודעות מחשבון אחד",
+      "opaque_hint": "המסננים שלך נערכו ידנית. פתח את הגדרות המסננים"
+    }
   },
   "shortcuts": {
     "title": "קיצורי מקלדת",
@@ -2835,6 +2921,7 @@
       "save_note": "שמור",
       "note_saved": "הערה נוספה",
       "open_link": "פתח קישור",
+      "copy_location": "העתק מיקום",
       "meeting_link": "קישור לפגישה",
       "tentative": "טנטטיבי",
       "cancelled": "בוטל",

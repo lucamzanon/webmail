@@ -108,6 +108,16 @@ export function parseJmapServers(raw: unknown): JmapServerEntry[] {
   return out;
 }
 
+/**
+ * An entry with its own OAuth client and a button label gets a sign-in button
+ * of its own on the login page, even while OAuth is off globally. A client id
+ * alone keeps its older meaning: the registered client that password and TOTP
+ * logins use, which must not start offering OAuth on its own.
+ */
+export function offersOwnOAuth(server: PublicJmapServerEntry | undefined): boolean {
+  return !!(server?.oauth?.clientId && server.oauth.buttonLabel);
+}
+
 /** Strip secrets for client-side exposure. */
 export function redactJmapServers(servers: JmapServerEntry[]): PublicJmapServerEntry[] {
   return servers.map((s) => ({

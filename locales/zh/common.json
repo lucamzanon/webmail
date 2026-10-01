@@ -18,6 +18,7 @@
     "reconnecting": "连接已断开，正在尝试重连…",
     "error": {
       "invalid_credentials": "邮箱地址或密码无效。请检查后重试。",
+      "invalid_token": "服务器未接受此访问令牌。请检查令牌是否完整，以及是否已过期或被撤销。",
       "connection_failed": "无法访问服务器。检查您的网络连接，然后重试。",
       "cors_blocked": "服务器可访问，但正在阻止跨源请求。请检查 JMAP 服务器的 CORS 设置，并允许此域名。",
       "server_error": "服务器暂时不可用，请稍后重试。",
@@ -29,6 +30,11 @@
     "show_password": "显示密码",
     "hide_password": "隐藏密码",
     "totp_toggle": "我有双重验证代码",
+    "token_toggle": "使用访问令牌登录",
+    "password_toggle": "使用密码登录",
+    "token_label": "访问令牌",
+    "token_placeholder": "粘贴 API 令牌",
+    "token_hint": "请在邮件服务商的设置中创建 API 令牌，然后粘贴到这里。",
     "remember_me": "记住我",
     "config_error": {
       "title": "配置错误",
@@ -725,6 +731,7 @@
     "recipient_name_placeholder": "显示名称",
     "autocomplete_search_server": "在服务器上搜索",
     "autocomplete_searching": "搜索中...",
+    "mention_recipients": "收件人",
     "toolbar": {
       "bold": "加粗",
       "italic": "斜体",
@@ -842,7 +849,19 @@
     "templates_import_empty": "文件中未找到模板",
     "export_email_error": "导出邮件失败",
     "import_email_success": "邮件导入成功",
-    "import_email_error": "导入邮件失败"
+    "import_email_error": "导入邮件失败",
+    "rule_created": "规则已创建",
+    "rule_merged": "已添加到规则“{name}”",
+    "rule_already_covered": "规则“{name}”已涵盖此项",
+    "rule_apply_existing": "{count, plural, other {应用于 # 封已有邮件}}",
+    "rule_applied": "{count, plural, =0 {没有需要更改的邮件} other {规则已应用于 # 封邮件}}",
+    "rule_apply_failed": "无法将规则应用于已有邮件",
+    "rule_edit": "编辑规则",
+    "rule_undo": "撤销",
+    "rule_undone": "已撤销规则更改",
+    "rule_undo_failed": "无法撤销规则更改",
+    "rule_undo_conflict": "过滤器在此之后已更改。请在过滤器设置中撤销该更改。",
+    "rule_folder_failed": "无法创建文件夹"
   },
   "date": {
     "today": "今天",
@@ -1524,6 +1543,10 @@
         "label": "空主题提醒",
         "description": "发送没有主题的邮件前请求确认。"
       },
+      "recipient_mentions": {
+        "label": "使用 @ 提及收件人",
+        "description": "在正文中输入 @ 会列出收件人，并插入所选收件人的名字。按 Enter 或 Tab 选择高亮的名字。"
+      },
       "hide_inline_image_attachments": {
         "label": "在附件列表中隐藏内嵌图片",
         "description": "嵌入到邮件正文中的图片不会作为单独的附件显示"
@@ -1618,6 +1641,7 @@
       "auth_method_label": "认证方式",
       "auth_method_oauth": "单点登录 (OAuth/OIDC)",
       "auth_method_basic": "密码",
+      "auth_method_token": "访问令牌",
       "demo_account": "演示账户",
       "email": {
         "label": "邮件",
@@ -1975,6 +1999,32 @@
       },
       "about": {
         "title": "Bulwark 网页邮箱"
+      },
+      "spam_siege": {
+        "title": "Spam Siege",
+        "intro": "在垃圾邮件和钓鱼邮件进入收件箱之前点击拦截。放行真实邮件。三面盾牌全部失去，收件箱就会失守。",
+        "kinds": {
+          "spam": "垃圾邮件",
+          "phishing": "钓鱼邮件",
+          "legit": "真实邮件"
+        },
+        "click_to_block": "点击拦截",
+        "let_through": "放行",
+        "start": "开始",
+        "play_again": "再玩一次",
+        "score": "得分",
+        "combo": "连击奖励",
+        "shields_left": "剩余盾牌 {count}/{total}",
+        "seconds": "{seconds} 秒",
+        "best": "最高分：{score}",
+        "new_best": "新纪录",
+        "held": "收件箱守住了",
+        "overrun": "收件箱失守",
+        "stats": {
+          "caught": "已拦截",
+          "delivered": "已送达",
+          "mistakes": "失误"
+        }
       }
     },
     "sidebar_apps": {
@@ -2108,7 +2158,9 @@
         "ends_with": "以…结尾",
         "matches": "匹配模式",
         "greater_than": "大于",
-        "less_than": "小于"
+        "less_than": "小于",
+        "address_is": "地址为",
+        "domain_is": "域名为"
       },
       "action_types": {
         "move": "移至文件夹",
@@ -2183,7 +2235,26 @@
         "actions_count": "{count, plural, one {# 个操作} other {# 个操作}}"
       },
       "origin_external": "外部",
-      "managed_by_tooltip": "由 {source} 管理。请在该应用中编辑，或使用原始 Sieve 编辑器。"
+      "managed_by_tooltip": "由 {source} 管理。请在该应用中编辑，或使用原始 Sieve 编辑器。",
+      "quick_rule_names": {
+        "move_sender": "将 {sender} 的邮件移至 {folder}",
+        "move_domain": "将 @{domain} 的邮件移至 {folder}",
+        "move_list": "将列表 {list} 移至 {folder}",
+        "mark_read": "将 {sender} 的邮件标记为已读",
+        "tag": "为 {sender} 的邮件添加标签 {tag}",
+        "block": "屏蔽 {sender}",
+        "custom": "来自 {sender} 的邮件",
+        "custom_plain": "新规则",
+        "senders": "{count, plural, other {# 个发件人}}"
+      },
+      "suggestions": "建议",
+      "suggest_subject": "主题“{subject}”",
+      "suggest_to": "收件人 {address}",
+      "suggest_cc": "抄送 {address}",
+      "suggest_list": "List-Id",
+      "suggest_domain": "@{domain}",
+      "apply_existing": "同时应用于此文件夹中已有的邮件",
+      "apply_existing_unsupported": "只有检查发件人、收件人、主题或邮件头，并执行移动、复制、标记为已读、加星标或添加标签的规则，才能应用于已有邮件。"
     },
     "templates": {
       "title": "邮件模板",
@@ -2322,7 +2393,22 @@
     "cancel_scheduled_send": "取消发送",
     "reschedule_send": "重新计划",
     "cancel_and_edit": "取消并编辑",
-    "cancel_and_compose_again": "取消并重新撰写"
+    "cancel_and_compose_again": "取消并重新撰写",
+    "rules": {
+      "title": "规则",
+      "move_from": "始终移动来自 {sender} 的邮件",
+      "move_from_domain": "始终移动来自 @{domain} 的邮件",
+      "move_from_list": "始终移动此邮件列表的邮件",
+      "mark_read_from": "始终将来自 {sender} 的邮件标记为已读",
+      "tag_with": "始终添加标签",
+      "block": "{count, plural, =1 {屏蔽发件人} other {屏蔽 # 个发件人}}",
+      "no_junk": "此账户没有垃圾邮件文件夹",
+      "create": "创建规则…",
+      "manage": "管理规则",
+      "senders_count": "{count, plural, other {# 个发件人}}",
+      "cross_account": "请选择同一账户中的邮件",
+      "opaque_hint": "你的过滤器已被手动编辑。请打开过滤器设置"
+    }
   },
   "mailbox_context_menu": {
     "mark_folder_read": "将文件夹标记为已读",
@@ -2911,6 +2997,7 @@
       "save_note": "保存",
       "note_saved": "注释已添加",
       "open_link": "打开链接",
+      "copy_location": "复制地点",
       "meeting_link": "会议链接",
       "tentative": "暂定",
       "cancelled": "已取消",

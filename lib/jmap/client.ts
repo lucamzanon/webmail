@@ -90,6 +90,16 @@ function basicAuthHeader(username: string, password: string): string {
   return `Basic ${btoa(binary)}`;
 }
 
+/** Origin of an absolute URL; null for a relative one or garbage. */
+function absoluteOrigin(url: string | undefined): string | null {
+  if (!url || !/^https?:\/\//i.test(url)) return null;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Parse a recipient string that may be "Name <email>" or bare "email" into
  * { name?, email }. The display name is unquoted and stripped of any address
@@ -1478,14 +1488,27 @@ export class JMAPClient implements IJMAPClient {
     }
   }
 
+  /**
+   * The server names its URLs under the base URL it believes it has, which
+   * behind a reverse proxy may not be one the browser can reach, so they are
+   * moved onto `serverUrl`'s origin. A URL on another HTTPS origin than the
+   * server's own `apiUrl` is one it deliberately hosts elsewhere (Fastmail
+   * serves downloads from a separate domain) and is kept.
+   */
   private rewriteSessionUrls(session: JMAPSession): void {
+    const reportedOrigin = absoluteOrigin(session.apiUrl);
+    const rewrite = (url: string): string => {
+      const origin = absoluteOrigin(url);
+      const hostedElsewhere = !!origin && !!reportedOrigin && origin !== reportedOrigin && origin.startsWith('https:');
+      return hostedElsewhere ? url : this.rewriteSessionUrl(url);
+    };
     session.apiUrl = this.rewriteSessionUrl(session.apiUrl);
-    session.downloadUrl = this.rewriteSessionUrl(session.downloadUrl);
+    session.downloadUrl = rewrite(session.downloadUrl);
     if (session.uploadUrl) {
-      session.uploadUrl = this.rewriteSessionUrl(session.uploadUrl);
+      session.uploadUrl = rewrite(session.uploadUrl);
     }
     if (session.eventSourceUrl) {
-      session.eventSourceUrl = this.rewriteSessionUrl(session.eventSourceUrl);
+      session.eventSourceUrl = rewrite(session.eventSourceUrl);
     }
   }
 
@@ -3352,6 +3375,72 @@ export class JMAPClient implements IJMAPClient {
       console.error('Advanced search failed:', error);
       throw error;
     }
+  }
+
+  async getEmailFields(
+    emailIds: string[],
+    properties: string[],
+    accountId?: string,
+  ): Promise<Array<Record<string, unknown>>> {
+    if (emailIds.length === 0) return [];
+    const targetAccountId = accountId || this.accountId;
+    const list: Array<Record<string, unknown>> = [];
+    for (const batchIds of batched(emailIds, this.getMaxObjectsInGet())) {
+      const response = await this.request([
+        ["Email/get", { accountId: targetAccountId, ids: batchIds, properties: ["id", ...properties] }, "0"],
+      ]);
+      const [name, result] = response.methodResponses?.[0] ?? [];
+      if (name !== "Email/get" || !result) {
+        throw new Error(methodErrorMessage(response, 'Failed to get emails'));
+      }
+      list.push(...((result.list || []) as Array<Record<string, unknown>>));
+    }
+    return list;
+  }
+
+  async queryEmailFields(
+    filter: Record<string, unknown>,
+    properties: string[],
+    accountId?: string,
+    limit: number = 10000,
+  ): Promise<Array<Record<string, unknown>>> {
+    const targetAccountId = accountId || this.accountId;
+    const pageSize = Math.min(500, this.getMaxObjectsInGet());
+    const seen = new Set<string>();
+    const list: Array<Record<string, unknown>> = [];
+    let position = 0;
+    while (list.length < limit) {
+      const requested = Math.min(pageSize, limit - list.length);
+      const response = await this.request([
+        ["Email/query", {
+          accountId: targetAccountId,
+          filter,
+          sort: [{ property: "receivedAt", isAscending: false }],
+          position,
+          limit: requested,
+        }, "0"],
+        ["Email/get", {
+          accountId: targetAccountId,
+          "#ids": { resultOf: "0", name: "Email/query", path: "/ids" },
+          properties: ["id", ...properties],
+        }, "1"],
+      ]);
+      assertQuerySucceeded(response, 'Email query');
+      const [getName, getResult] = response.methodResponses?.[1] ?? [];
+      if (getName !== "Email/get" || !getResult) {
+        throw new Error(methodErrorMessage(response, 'Failed to get emails'));
+      }
+      const ids = (response.methodResponses?.[0]?.[1]?.ids ?? []) as string[];
+      for (const email of (getResult.list || []) as Array<Record<string, unknown>>) {
+        const id = email.id as string;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        list.push(email);
+      }
+      if (ids.length < requested) break;
+      position += ids.length;
+    }
+    return list;
   }
 
   async searchSentRecipients(query: string, sentMailboxId: string, accountId?: string, limit: number = 60): Promise<Array<{ name: string; email: string }>> {

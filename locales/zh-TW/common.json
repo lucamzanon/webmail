@@ -18,6 +18,7 @@
     "reconnecting": "連線中斷，正在嘗試重新連線…",
     "error": {
       "invalid_credentials": "電子郵件地址或密碼不正確。請檢查您的登入資訊後再試一次。",
+      "invalid_token": "伺服器不接受此存取權杖。請確認權杖完整，且未過期或遭撤銷。",
       "connection_failed": "無法連線至伺服器。請檢查網路連線後再試一次。",
       "cors_blocked": "可連線至伺服器，但跨來源請求遭到封鎖。請檢查 JMAP 伺服器的 CORS 設定，並允許此網域。",
       "server_error": "伺服器目前無法使用，請稍後再試。",
@@ -29,6 +30,11 @@
     "show_password": "顯示密碼",
     "hide_password": "隱藏密碼",
     "totp_toggle": "我有 2FA 驗證碼",
+    "token_toggle": "使用存取權杖登入",
+    "password_toggle": "使用密碼登入",
+    "token_label": "存取權杖",
+    "token_placeholder": "貼上 API 權杖",
+    "token_hint": "請在郵件服務供應商的設定中建立 API 權杖，然後貼到這裡。",
     "remember_me": "記住我",
     "config_error": {
       "title": "設定錯誤",
@@ -725,6 +731,7 @@
     "recipient_name_placeholder": "顯示名稱",
     "autocomplete_search_server": "在伺服器上搜尋",
     "autocomplete_searching": "正在搜尋…",
+    "mention_recipients": "收件者",
     "toolbar": {
       "bold": "粗體",
       "italic": "斜體",
@@ -842,7 +849,19 @@
     "templates_import_empty": "檔案中找不到範本",
     "export_email_error": "無法匯出郵件",
     "import_email_success": "郵件已成功匯入",
-    "import_email_error": "無法匯入郵件"
+    "import_email_error": "無法匯入郵件",
+    "rule_created": "已建立規則",
+    "rule_merged": "已加入規則「{name}」",
+    "rule_already_covered": "規則「{name}」已涵蓋此項",
+    "rule_apply_existing": "{count, plural, other {套用到 # 封既有郵件}}",
+    "rule_applied": "{count, plural, =0 {沒有需要變更的郵件} other {已將規則套用到 # 封郵件}}",
+    "rule_apply_failed": "無法將規則套用到既有郵件",
+    "rule_edit": "編輯規則",
+    "rule_undo": "復原",
+    "rule_undone": "已復原規則變更",
+    "rule_undo_failed": "無法復原規則變更",
+    "rule_undo_conflict": "篩選規則在那之後已變更。請在篩選規則設定中復原該變更。",
+    "rule_folder_failed": "無法建立資料夾"
   },
   "date": {
     "today": "今天",
@@ -1527,6 +1546,10 @@
         "label": "空主題提醒",
         "description": "傳送沒有主題的郵件前請求確認。"
       },
+      "recipient_mentions": {
+        "label": "使用 @ 提及收件者",
+        "description": "在內文輸入 @ 會列出收件者，並插入所選收件者的名字。按 Enter 或 Tab 選擇醒目標示的名字。"
+      },
       "hide_inline_image_attachments": {
         "label": "在附件清單中隱藏內嵌圖片",
         "description": "嵌入到郵件內文中的圖片不會作為單獨的附件顯示"
@@ -1621,6 +1644,7 @@
       "auth_method_label": "驗證方式",
       "auth_method_oauth": "單一登入（OAuth/OIDC）",
       "auth_method_basic": "密碼",
+      "auth_method_token": "存取權杖",
       "demo_account": "示範帳號",
       "email": {
         "label": "電子郵件地址",
@@ -1982,6 +2006,32 @@
       },
       "about": {
         "title": "Bulwark 網頁郵件"
+      },
+      "spam_siege": {
+        "title": "Spam Siege",
+        "intro": "在垃圾郵件和釣魚郵件進入收件匣之前點擊攔截。放行真實郵件。三面盾牌全部失去，收件匣就會失守。",
+        "kinds": {
+          "spam": "垃圾郵件",
+          "phishing": "釣魚郵件",
+          "legit": "真實郵件"
+        },
+        "click_to_block": "點擊攔截",
+        "let_through": "放行",
+        "start": "開始",
+        "play_again": "再玩一次",
+        "score": "得分",
+        "combo": "連擊獎勵",
+        "shields_left": "剩餘盾牌 {count}/{total}",
+        "seconds": "{seconds} 秒",
+        "best": "最高分：{score}",
+        "new_best": "新紀錄",
+        "held": "收件匣守住了",
+        "overrun": "收件匣失守",
+        "stats": {
+          "caught": "已攔截",
+          "delivered": "已送達",
+          "mistakes": "失誤"
+        }
       }
     },
     "sidebar_apps": {
@@ -2115,7 +2165,9 @@
         "ends_with": "以…結尾",
         "matches": "符合模式",
         "greater_than": "大於",
-        "less_than": "小於"
+        "less_than": "小於",
+        "address_is": "地址為",
+        "domain_is": "網域為"
       },
       "action_types": {
         "move": "移至信件匣",
@@ -2190,7 +2242,26 @@
         "actions_count": "{count, plural, one {# 個動作} other {# 個動作}}"
       },
       "origin_external": "外部",
-      "managed_by_tooltip": "由 {source} 管理。請在該應用程式中編輯，或使用原始 Sieve 編輯器。"
+      "managed_by_tooltip": "由 {source} 管理。請在該應用程式中編輯，或使用原始 Sieve 編輯器。",
+      "quick_rule_names": {
+        "move_sender": "將 {sender} 的郵件移至 {folder}",
+        "move_domain": "將 @{domain} 的郵件移至 {folder}",
+        "move_list": "將清單 {list} 移至 {folder}",
+        "mark_read": "將 {sender} 的郵件標示為已讀",
+        "tag": "為 {sender} 的郵件加上標籤 {tag}",
+        "block": "封鎖 {sender}",
+        "custom": "來自 {sender} 的郵件",
+        "custom_plain": "新規則",
+        "senders": "{count, plural, other {# 位寄件者}}"
+      },
+      "suggestions": "建議",
+      "suggest_subject": "主旨「{subject}」",
+      "suggest_to": "收件者 {address}",
+      "suggest_cc": "副本 {address}",
+      "suggest_list": "List-Id",
+      "suggest_domain": "@{domain}",
+      "apply_existing": "也套用到此資料夾中既有的郵件",
+      "apply_existing_unsupported": "只有檢查寄件者、收件者、主旨或標頭，並執行移動、複製、標示為已讀、加上星號或標籤的規則，才能套用到既有郵件。"
     },
     "templates": {
       "title": "郵件範本",
@@ -2322,7 +2393,22 @@
     "cancel_scheduled_send": "取消傳送",
     "reschedule_send": "重新排程",
     "cancel_and_edit": "取消並編輯",
-    "cancel_and_compose_again": "取消並重新撰寫"
+    "cancel_and_compose_again": "取消並重新撰寫",
+    "rules": {
+      "title": "規則",
+      "move_from": "一律移動來自 {sender} 的郵件",
+      "move_from_domain": "一律移動來自 @{domain} 的郵件",
+      "move_from_list": "一律移動此郵件清單的郵件",
+      "mark_read_from": "一律將來自 {sender} 的郵件標示為已讀",
+      "tag_with": "一律加上標籤",
+      "block": "{count, plural, =1 {封鎖寄件者} other {封鎖 # 位寄件者}}",
+      "no_junk": "此帳號沒有垃圾郵件資料夾",
+      "create": "建立規則…",
+      "manage": "管理規則",
+      "senders_count": "{count, plural, other {# 位寄件者}}",
+      "cross_account": "請選取同一個帳號中的郵件",
+      "opaque_hint": "你的篩選規則曾被手動編輯。請開啟篩選規則設定"
+    }
   },
   "mailbox_context_menu": {
     "mark_folder_read": "將信件匣標示為已讀",
@@ -2911,6 +2997,7 @@
       "save_note": "儲存",
       "note_saved": "已新增備註",
       "open_link": "開啟連結",
+      "copy_location": "複製地點",
       "meeting_link": "會議連結",
       "tentative": "暫定",
       "cancelled": "已取消",
