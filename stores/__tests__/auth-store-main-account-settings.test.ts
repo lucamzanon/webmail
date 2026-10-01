@@ -1,8 +1,8 @@
 import { beforeAll, expect, it, vi } from 'vitest';
 
-// Settings are one set per user, kept on the main (default) account: switching
-// to another account must neither load that account's stored copy nor save
-// edits to it.
+// With settingsFromMainAccount on, settings are one set kept on the main
+// (default) account: switching to another account must neither load that
+// account's stored copy nor save edits to it. Off, each account keeps its own.
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 vi.mock('@/lib/jmap/client', () => {
@@ -65,17 +65,29 @@ beforeAll(() => {
   }));
 });
 
-it('loads and saves the main account\'s settings whichever account is active', async () => {
+async function switchToB(fromMain: boolean) {
+  useSettingsStore.getState().disableSync();
+  useSettingsStore.setState({ settingsFromMainAccount: fromMain });
   useAccountStore.setState({ accounts: [A, B] as never, activeAccountId: A.id, defaultAccountId: A.id });
   useAuthStore.setState({ isAuthenticated: true, activeAccountId: A.id, client: null });
+  loads.length = 0;
   await useAuthStore.getState().switchAccount(B.id);
   await sleep(50);
   expect(useAuthStore.getState().activeAccountId).toBe(B.id);
+  posts.length = 0;
+  useSettingsStore.getState().updateSetting('fontSize', fromMain ? 'large' as never : 'small' as never);
+  await sleep(2300);
+}
+
+it('loads and saves the main account\'s settings whichever account is active, when asked to', async () => {
+  await switchToB(true);
   expect(loads.length).toBeGreaterThan(0);
   expect(loads.every((u) => u === 'a@x.test')).toBe(true);
-
-  posts.length = 0;
-  useSettingsStore.getState().updateSetting('fontSize', 'large' as never);
-  await sleep(2300);
   expect(posts).toEqual(['a@x.test']);
+}, 15000);
+
+it('keeps each account\'s own settings by default', async () => {
+  await switchToB(false);
+  expect(loads).toContain('b@x.test');
+  expect(posts).toEqual(['b@x.test']);
 }, 15000);

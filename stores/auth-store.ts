@@ -757,13 +757,15 @@ function resumeSettingsSync(account: Pick<AccountEntry, 'id' | 'username' | 'ser
 }
 
 /**
- * The login whose synced settings the app uses: the main (default) account,
- * whichever account is on screen. Settings are one set per user, not one per
- * mailbox - switching to another account must not swap the theme, the layout
- * or the merged mailbox for that account's stored copy. Falls back to the
- * given login when there is no main account yet (the first sign-in).
+ * The login whose synced settings the app uses. Normally the one being made
+ * active. With `settingsFromMainAccount` on, the main (default) account,
+ * whichever account is on screen: one set of settings for every account, so a
+ * switch does not swap theme, layout or the merged mailbox for that account's
+ * stored copy. Falls back to the given login when there is no main account
+ * yet (the first sign-in).
  */
 function settingsHome(username: string, serverUrl: string): { username: string; serverUrl: string } {
+  if (!useSettingsStore.getState().settingsFromMainAccount) return { username, serverUrl };
   const main = useAccountStore.getState().getDefaultAccount();
   return main?.username && main.serverUrl
     ? { username: main.username, serverUrl: main.serverUrl }
@@ -776,6 +778,17 @@ function loadAndSyncSettings(username: string, serverUrl: string): Promise<unkno
   return useSettingsStore.getState().loadFromServer(home.username, home.serverUrl).finally(() => {
     useSettingsStore.getState().enableSync(home.username, home.serverUrl);
   });
+}
+
+/**
+ * Load the settings from wherever they now come from, after
+ * `settingsFromMainAccount` was switched, and sync there from now on.
+ */
+export function reloadSettingsHome(): void {
+  const active = useAccountStore.getState().getActiveAccount();
+  if (!active) return;
+  useSettingsStore.getState().disableSync();
+  resumeSettingsSync(active);
 }
 
 export function applyPreferredIdentity(accountId?: string | null): void {
