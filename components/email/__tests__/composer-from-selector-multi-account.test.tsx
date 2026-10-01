@@ -1,4 +1,4 @@
-import { render } from '@testing-library/react';
+import { render, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { EmailComposer } from '../email-composer';
@@ -314,6 +314,17 @@ describe('composer From selector with several accounts', () => {
       />,
     );
 
+    expect((getByTestId('composer-from') as HTMLSelectElement).value).toBe('acct-2::id-other');
+  });
+
+  it('switches the sender on a new message, within an account and across accounts', () => {
+    const { getByTestId } = renderComposer();
+    const select = getByTestId('composer-from') as HTMLSelectElement;
+
+    fireEvent.change(select, { target: { value: 'acct-1::id-1b' } });
+    expect((getByTestId('composer-from') as HTMLSelectElement).value).toBe('acct-1::id-1b');
+
+    fireEvent.change(getByTestId('composer-from'), { target: { value: 'acct-2::id-other' } });
     expect((getByTestId('composer-from') as HTMLSelectElement).value).toBe('acct-2::id-other');
   });
 
