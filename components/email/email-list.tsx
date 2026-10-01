@@ -786,8 +786,8 @@ export function EmailList({
           onRescheduleScheduled={onRescheduleScheduled ? () => onRescheduleScheduled(contextMenuEmail!) : undefined}
           copyTargets={copyTargets}
           onCopyToAccount={async (accountId, mailboxId) => {
-            const ids = selectedEmailIds.has(contextMenuEmail!.id) && selectedEmailIds.size > 1
-              ? Array.from(selectedEmailIds)
+            const ids = selectedEmailKeys.has(emailKeyFor(contextMenuEmail!)) && selectedEmailKeys.size > 1
+              ? selectedEmailsInView.map((email) => email.id)
               : [contextMenuEmail!.id];
             const target = accountMailboxes[accountId]?.find((mb) => mb.id === mailboxId);
             await runBatchEmailAction(() => copyEmailsToAccount(ids, accountId, target?.originalId ?? mailboxId), {
