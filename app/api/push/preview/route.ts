@@ -22,8 +22,9 @@ interface ResolvedTarget {
   apiUrl: string;
   accountId: string;
   /**
-   * Human label for the account this preview belongs to - the JMAP session's
-   * account name, which for Stalwart is the address itself. The SW stamps it
+   * Human label for the account this preview belongs to. For a login's own
+   * account, the address the user signs in with (see accountLabel); for a
+   * shared one, the JMAP session's account name. The SW stamps it
    * on every notification so a burst from two addresses stays legible (the
    * relay never echoes accountLabel back in a push).
    */
@@ -46,13 +47,25 @@ interface ResolvedTarget {
   slot?: number;
 }
 
+/**
+ * What the user calls a login's own account: the address they sign in with.
+ * The session's account name is the server's principal name, which need not be
+ * that address - a principal named "alfred" holding ambrogio@... showed every
+ * notification for that address as "(alfred)". A login name that is not an
+ * address says less than the server's name, so that one stays.
+ */
+function accountLabel(username: string | undefined, sessionName: string | undefined): string {
+  return username && username.includes('@') ? username : (sessionName ?? '');
+}
+
 // When the SW passes ?accountId=, we need the slot whose JMAP session owns
 // that account - not just "the first signed-in slot", which is what
 // getStalwartCredentials() defaults to. Probe each candidate's session in
-// parallel and return the first match.
+// parallel; the login whose own account it is wins over one that only sees it
+// shared, which would name it and open it in the wrong login.
 async function resolveTargetForAccount(accountId: string): Promise<ResolvedTarget | null> {
   const cookieStore = await cookies();
-  const probes: Promise<ResolvedTarget | null>[] = [];
+  const probes: Promise<(ResolvedTarget & { own: boolean }) | null>[] = [];
   for (let slot = 0; slot < MAX_ACCOUNT_SLOTS; slot++) {
     const ctx = readStalwartAuthContextFromStore(cookieStore, slot);
     if (!ctx) continue;
@@ -79,14 +92,18 @@ async function resolveTargetForAccount(accountId: string): Promise<ResolvedTarge
             accountId !== mailAccountId &&
             Object.prototype.hasOwnProperty.call(session.accounts ?? {}, accountId);
           if (mailAccountId !== accountId && !isSharedAccount) return null;
+          const own = mailAccountId === accountId;
           return {
             authHeader: ctx.authHeader,
             apiUrl: session.apiUrl,
             accountId,
-            accountName: session.accounts?.[accountId]?.name ?? '',
+            accountName: own
+              ? accountLabel(ctx.username, session.accounts?.[accountId]?.name)
+              : session.accounts?.[accountId]?.name ?? '',
             loginId: ctx.username ? generateAccountId(ctx.username, serverUrl) : '',
             trusted,
             slot,
+            own,
           };
         } catch {
           return null;
@@ -94,8 +111,11 @@ async function resolveTargetForAccount(accountId: string): Promise<ResolvedTarge
       })(),
     );
   }
-  const results = await Promise.all(probes);
-  return results.find((r): r is ResolvedTarget => r !== null) ?? null;
+  const results = (await Promise.all(probes)).filter((r) => r !== null);
+  const match = results.find((r) => r.own) ?? results[0];
+  if (!match) return null;
+  const { own: _own, ...target } = match;
+  return target;
 }
 
 async function resolveDefaultTarget(creds: StalwartCredentials): Promise<ResolvedTarget | null> {
@@ -115,7 +135,7 @@ async function resolveDefaultTarget(creds: StalwartCredentials): Promise<Resolve
     authHeader: creds.authHeader,
     apiUrl,
     accountId,
-    accountName: session.accounts?.[accountId]?.name ?? '',
+    accountName: accountLabel(creds.username, session.accounts?.[accountId]?.name),
     loginId: creds.username ? generateAccountId(creds.username, creds.serverUrl) : '',
     trusted: creds.trusted,
   };
