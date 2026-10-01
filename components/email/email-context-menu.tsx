@@ -77,7 +77,6 @@ interface EmailContextMenuProps {
   onDelete?: () => void;
   onArchive?: () => void;
   onSetTag?: (tagId: string | null) => void;
-  onTransfer?: () => void;
   onMoveToMailbox?: (mailboxId: string) => void;
   onMarkAsSpam?: () => void;
   onUndoSpam?: () => void;
@@ -134,7 +133,6 @@ export function EmailContextMenu({
   onArchive,
   onSetTag,
   onMoveToMailbox,
-  onTransfer,
   onMarkAsSpam,
   onUndoSpam,
   onBatchMarkAsRead,
@@ -148,7 +146,6 @@ export function EmailContextMenu({
   onRescheduleScheduled,
 }: EmailContextMenuProps) {
   const t = useTranslations("context_menu");
-  const tTransfer = useTranslations("account_transfer");
   const tSidebar = useTranslations("sidebar");
   const tEmailViewer = useTranslations("email_viewer");
   const tDeepLink = useTranslations("deep_link");
@@ -371,8 +368,6 @@ export function EmailContextMenu({
         </ContextMenuSubMenu>
       )}
 
-      {!isScheduled && onTransfer && <ContextMenuItem icon={FolderInput} label={tTransfer('open')}
-        onClick={() => handleAction(onTransfer)} />}
 
       {/* Rules: filter rules made from the sender(s), saved as Sieve */}
       <RulesContextSubMenu anchor={email} senderEmails={ruleSenderEmails} onClose={onClose} />

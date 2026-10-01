@@ -8,7 +8,6 @@ import { useEmailStore } from '@/stores/email-store';
 import { useAccountStore, type AccountEntry } from '@/stores/account-store';
 import { useManagedAccountStore } from '@/stores/managed-account-store';
 import type { SharedAccount } from '@/lib/jmap/types';
-import { AccountMigrationSettings } from './account-migration-settings';
 import { AccountDisplaySettings } from './account-display-settings';
 import { SettingsSection, SettingItem } from './settings-section';
 import { Avatar } from '@/components/ui/avatar';
@@ -123,7 +122,6 @@ export function AccountSettings() {
   return (
     <div className="space-y-8">
       <AccountDisplaySettings />
-      <AccountMigrationSettings />
       {!isDemoMode && <AccountVaultSettings />}
       <SettingsSection title={t('title')} description={t('description')}>
         {/* Display Name */}

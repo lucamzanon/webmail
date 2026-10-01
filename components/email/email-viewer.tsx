@@ -1,6 +1,5 @@
 "use client";
 
-import { AccountTransferButton } from "./account-transfer-button";
 
 import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback, useId } from "react";
 import { Email, ContactCard, Mailbox } from "@/lib/jmap/types";
@@ -3179,7 +3178,6 @@ export function EmailViewer({
           <Trash2 className="w-4 h-4" />
           {showToolbarLabels && <span className="text-[10px] leading-tight sm:text-sm">{t('delete')}</span>}
         </Button>
-        <AccountTransferButton emails={[email]} />
         {/* Move to folder */}
         {moveTree.length > 0 && onMoveToMailbox && (
           <div ref={moveMenuRef} data-overflow-item data-overflow-priority="5" className="relative">

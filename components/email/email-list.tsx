@@ -3,10 +3,6 @@
 import { Email, ThreadGroup } from "@/lib/jmap/types";
 import { ThreadListItem } from "./thread-list-item";
 import type { Attachment } from "@/lib/jmap/types";
-import { AccountTransferButton } from './account-transfer-button';
-import { AccountTransferDialog, resolveTransferSelection } from './account-transfer-dialog';
-import type { TransferMessage } from '@/lib/email-transfer';
-import { useAccountStore } from '@/stores/account-store';
 import { emailKeyFor } from '@/lib/thread-utils';
 import type { LoadListAttachments } from "@/lib/list-attachments";
 import { listRowShowsChips } from "./attachment-chips";
@@ -331,10 +327,7 @@ export function EmailList({
     </div>
   );
 
-  const tTransfer = useTranslations('account_transfer');
-  const accountCount = useAccountStore(s => s.accounts.length);
-  const [transferSelection, setTransferSelection] = useState<TransferMessage[] | null>(null);
-  const selectedTransferEmails = useMemo(() => {
+  const selectedEmailsInView = useMemo(() => {
     const candidates = [...emails, ...Array.from(threadEmailsCache.values()).flat()];
     const selected = new Map<string, Email>();
     for (const email of candidates) {
@@ -360,7 +353,7 @@ export function EmailList({
     if (!client || isProcessing) return;
     setIsProcessing(true);
     try {
-      const emailIds = selectedTransferEmails.map((email) => email.id);
+      const emailIds = selectedEmailsInView.map((email) => email.id);
       await batchUndoSpam(client, emailIds);
       toast.success(tSpam('toast_not_spam_batch', { count: emailIds.length }));
     } catch {
@@ -491,7 +484,6 @@ export function EmailList({
   return (
     <TagDisplayContext.Provider value={tagDisplay}>
     <div className={cn("flex flex-col min-h-0", className)}>
-      {transferSelection && <AccountTransferDialog selection={transferSelection} onClose={() => setTransferSelection(null)} />}
       {/* Batch Actions Toolbar */}
       <div
         ref={batchToolbarRef}
@@ -507,7 +499,6 @@ export function EmailList({
             </span>
           </div>
           <div className="flex items-center gap-1 animate-in fade-in slide-in-from-right-3 duration-300">
-            <AccountTransferButton emails={selectedTransferEmails} expectedCount={selectedEmailKeys.size} />
             <Button
               variant="ghost"
               size="sm"
@@ -757,15 +748,6 @@ export function EmailList({
           onDelete={() => onDelete?.(contextMenuEmail!)}
           onArchive={() => onArchive?.(contextMenuEmail!)}
           onSetTag={(color) => onSetTag?.(contextMenuEmail!.id, color)}
-          onTransfer={accountCount > 1 ? async () => {
-            const chosen = selectedEmailKeys.has(emailKeyFor(contextMenuEmail!)) && selectedEmailKeys.size > 1
-              ? selectedTransferEmails : [contextMenuEmail!];
-            if (chosen === selectedTransferEmails && new Set(chosen.map(email => email.id)).size !== selectedEmailKeys.size) {
-              toast.error(tTransfer('selection_changed')); return;
-            }
-            try { setTransferSelection(resolveTransferSelection(chosen)); }
-            catch { toast.error(tTransfer('disconnected')); }
-          } : undefined}
           onMoveToMailbox={(mailboxId) => onMoveToMailbox?.(contextMenuEmail!.id, mailboxId)}
           onMarkAsSpam={() => onMarkAsSpam?.(contextMenuEmail!)}
           onUndoSpam={() => onUndoSpam?.(contextMenuEmail!)}
@@ -802,7 +784,7 @@ export function EmailList({
           }}
           onBatchMarkAsSpam={async () => {
             if (client) {
-              const emailIds = selectedTransferEmails.map((email) => email.id);
+              const emailIds = selectedEmailsInView.map((email) => email.id);
               try {
                 await batchMarkAsSpam(client, emailIds);
                 toast.success(
@@ -815,7 +797,7 @@ export function EmailList({
           }}
           onBatchUndoSpam={async () => {
             if (client) {
-              const emailIds = selectedTransferEmails.map((email) => email.id);
+              const emailIds = selectedEmailsInView.map((email) => email.id);
               try {
                 await batchUndoSpam(client, emailIds);
                 toast.success(

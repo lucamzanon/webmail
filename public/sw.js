@@ -370,6 +370,15 @@ async function postAccountNotification(accountId, accountName, loginId, entries,
   });
 }
 
+// Record which message ids this push announced so a redelivery stays quiet.
+async function rememberAnnounced(accountId, notified, freshIds, messages) {
+  const fromMessages = messages ? messages.map((m) => m.id) : [];
+  const announced = fromMessages.length > 0 ? fromMessages : freshIds;
+  if (announced.length > 0) {
+    await writeNotifiedIds(accountId, notified.concat(announced));
+  }
+}
+
 // One message often lands in several of the user's accounts at once - a list,
 // a forward, the same newsletter on two logins - and each account has its own
 // notification. Only the first alert of a burst makes a sound; other accounts'
