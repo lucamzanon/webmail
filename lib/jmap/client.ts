@@ -3868,7 +3868,8 @@ export class JMAPClient implements IJMAPClient {
     if (response.methodResponses?.[0]?.[0] === "Email/set") {
       const result = response.methodResponses[0][1];
 
-      if (result.notCreated) {
+      // An empty notCreated map is a success some servers spell out.
+      if (result.notCreated && Object.keys(result.notCreated).length) {
         const errors = result.notCreated;
         const firstError = Object.values(errors)[0] as { description?: string; type?: string };
         console.error('Draft save error:', firstError);
@@ -4134,7 +4135,7 @@ export class JMAPClient implements IJMAPClient {
 
     if (response.methodResponses) {
       for (const [methodName, result] of response.methodResponses) {
-        if (result.notCreated) {
+        if (result.notCreated && Object.keys(result.notCreated).length) {
           // Include method name + full error object so it's clear whether the
           // failure came from Email/set (draft create) or EmailSubmission/set
           // (actual send) and which JMAP error type/properties were returned.
@@ -4186,6 +4187,13 @@ export class JMAPClient implements IJMAPClient {
           serverSendAt = result.created['1'].sendAt;
         }
       }
+    }
+
+    // No EmailSubmission came back - a method error, or no answer for it at
+    // all. Nothing confirms the message left: report a failure and keep the
+    // old draft rather than replacing it as if the send had worked.
+    if (!emailSubmissionId) {
+      throw new Error('Send confirmation was not received. Check Sent before sending again. Your draft has been kept.');
     }
 
     // With every recipient refused nothing was queued, yet the submission
