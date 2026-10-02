@@ -116,6 +116,8 @@ interface SidebarProps {
   /** Gated All mail / Unread / Starred entries in the "Unified Mailbox" section. */
   showCrossUnread?: boolean;
   showCrossStarred?: boolean;
+  /** Gmail skin: open Starred from its own row under the Inbox. */
+  onOpenStarred?: () => void;
   showCrossAll?: boolean;
   /** Unread total across all cross-view folders (badge for unread/all). */
   crossUnreadCount?: number;
@@ -846,6 +848,7 @@ export function Sidebar({
   crossAccountActive = false,
   showCrossUnread = false,
   showCrossStarred = false,
+  onOpenStarred,
   showCrossAll = false,
   crossUnreadCount = 0,
   className,
@@ -1479,6 +1482,18 @@ export function Sidebar({
                           onContextMenu={handleMailboxContextMenu}
                         />
                         {node.role === 'drafts' && renderScheduledRow('scheduled')}
+                        {/* Gmail lists Starred right under the Inbox. */}
+                        {gmailFlat && node.role === 'inbox' && onOpenStarred && (
+                          <SidebarRow
+                            icon={<Star className="w-4 h-4 text-muted-foreground" />}
+                            label={t("mailboxes.starred")}
+                            testName="skin-starred"
+                            depth={0}
+                            isSelected={selectedMailbox === CROSS_VIEW_IDS.starred}
+                            onClick={onOpenStarred}
+                            isCollapsed={false}
+                          />
+                        )}
                       </Fragment>
                     ))}
                     {!primaryTree.some((node) => node.role === 'drafts') && renderScheduledRow('scheduled')}

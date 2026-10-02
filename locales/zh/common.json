@@ -239,6 +239,7 @@
     "replied": "已回复",
     "forwarded": "已转发",
     "has_attachment": "有附件",
+    "conversations_range": "第 {from}–{to, number} 个，共 {total, number} 个",
     "conversations_count": "共 {total} 个会话，当前显示 {count} 个",
     "conversations_count_plus": "{count}+ 个会话",
     "conversations_count_simple": "{count} 个会话",

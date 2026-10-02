@@ -239,6 +239,7 @@
     "replied": "Besvart",
     "forwarded": "Videresendt",
     "has_attachment": "Har vedlegg",
+    "conversations_range": "{from}–{to, number} av {total, number}",
     "conversations_count": "{count} av {total} samtaler",
     "conversations_count_plus": "{count}+ samtaler",
     "conversations_count_simple": "{count} samtaler",

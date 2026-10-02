@@ -66,6 +66,23 @@ describe('Sidebar under the Gmail skin', () => {
     expect(folderRow('Drafts')).not.toBeNull();
   });
 
+  it('lists Starred right under the Inbox, and opens it', () => {
+    const onOpenStarred = vi.fn();
+    const { container } = render(
+      <Sidebar mailboxes={mailboxes} selectedMailbox="inbox" gmailShell onOpenStarred={onOpenStarred} />,
+    );
+
+    const rows = [...container.querySelectorAll('[data-folder-name]')].map((r) => r.getAttribute('data-folder-name'));
+    expect(rows.indexOf('skin-starred')).toBe(rows.indexOf('Inbox') + 1);
+    fireEvent.click(container.querySelector('[data-folder-name="skin-starred"] button:last-of-type')!);
+    expect(onOpenStarred).toHaveBeenCalledTimes(1);
+  });
+
+  it('has no Starred row outside the skin', () => {
+    const { container } = render(<Sidebar mailboxes={mailboxes} selectedMailbox="inbox" onOpenStarred={vi.fn()} />);
+    expect(container.querySelector('[data-folder-name="skin-starred"]')).toBeNull();
+  });
+
   it('reveals the folders and the labels together, and takes them back', () => {
     render(<Sidebar mailboxes={mailboxes} selectedMailbox="inbox" gmailShell />);
 

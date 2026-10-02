@@ -239,6 +239,7 @@
     "replied": "Atbildēts",
     "forwarded": "Pārsūtīts",
     "has_attachment": "Ar pielikumu",
+    "conversations_range": "{from}–{to, number} no {total, number}",
     "conversations_count": "{count} no {total} sarunām",
     "conversations_count_plus": "{count}+ sarunas",
     "conversations_count_simple": "{count} sarunas",

@@ -532,7 +532,9 @@ export function GmailListToolbar({
 
       {loadedCount > 0 && (
         <span className="text-xs text-muted-foreground tabular-nums pe-2 shrink-0">
-          {t("conversations_count", { count: loadedCount, total: displayedTotal })}
+          {/* Gmail's range readout. The list grows as it scrolls rather than
+              paging, so there are no previous/next arrows to go with it. */}
+          {t("conversations_range", { from: 1, to: loadedCount, total: displayedTotal })}
         </span>
       )}
 

@@ -239,6 +239,7 @@
     "replied": "پاسخ داده شده",
     "forwarded": "بازارسال شده",
     "has_attachment": "دارای پیوست",
+    "conversations_range": "{from}–{to, number} از {total, number}",
     "conversations_count": "{count} از {total} مکالمه",
     "conversations_count_plus": "+{count} مکالمه",
     "conversations_count_simple": "{count} مکالمه",

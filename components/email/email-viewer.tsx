@@ -4011,8 +4011,9 @@ export function EmailViewer({
                 </div>
               )}
             </div>
-            {/* Date/time on the right of subject row - hidden on mobile, shown next to sender */}
-            <div className="hidden sm:block flex-shrink-0 text-end">
+            {/* Date/time on the right of subject row - hidden on mobile, shown next to sender.
+                The Gmail skin puts it on the sender's row instead, and shows no size. */}
+            <div className={cn("hidden flex-shrink-0 text-end", !gmailViewer && "sm:block")}>
               <span className="text-xs lg:text-sm text-muted-foreground whitespace-nowrap">
                 {formatDateTime(emailDisplayDate(email), timeFormat, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
               </span>
@@ -4073,6 +4074,9 @@ export function EmailViewer({
                     ) : (
                       <span className="font-semibold text-foreground">{t('unknown_sender')}</span>
                     )}
+                    {gmailViewer && sender?.email && sender?.name && (
+                      <span className="text-xs text-muted-foreground truncate">&lt;{sender.email}&gt;</span>
+                    )}
                     <EmailIdentityBadge email={email} identities={identities} />
                     {shouldShowUnsubBanner && listHeaders?.listUnsubscribe && (
                       <UnsubscribeBanner
@@ -4087,9 +4091,14 @@ export function EmailViewer({
                         }}
                       />
                     )}
+                    {gmailViewer && (
+                      <span className="ms-auto ps-2 text-xs text-muted-foreground whitespace-nowrap" data-skin-sender-date="">
+                        {formatDateTime(emailDisplayDate(email), timeFormat, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                      </span>
+                    )}
                   </div>
-                  {/* Email address under name */}
-                  {sender?.email && sender?.name && (
+                  {/* Email address under name (on the name's line under the Gmail skin) */}
+                  {!gmailViewer && sender?.email && sender?.name && (
                     <div className="text-sm text-muted-foreground mt-0.5 truncate">{sender.email}</div>
                   )}
                 </div>

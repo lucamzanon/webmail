@@ -239,6 +239,7 @@
     "replied": "Megválaszolva",
     "forwarded": "Továbbítva",
     "has_attachment": "Melléklettel",
+    "conversations_range": "{from}–{to, number} / {total, number}",
     "conversations_count": "{count} / {total} beszélgetés",
     "conversations_count_plus": "{count}+ beszélgetés",
     "conversations_count_simple": "{count} beszélgetés",

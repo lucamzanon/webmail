@@ -239,6 +239,7 @@
     "replied": "返信済み",
     "forwarded": "転送済み",
     "has_attachment": "添付ファイルあり",
+    "conversations_range": "{total, number} 件中 {from}–{to, number} 件",
     "conversations_count": "{total}件中{count}件の会話",
     "conversations_count_plus": "{count}件以上の会話",
     "conversations_count_simple": "{count}件の会話",

@@ -239,6 +239,7 @@
     "replied": "Respost",
     "forwarded": "Reenviat",
     "has_attachment": "Té adjunt",
+    "conversations_range": "{from}–{to, number} de {total, number}",
     "conversations_count": "{count} de {total} converses",
     "conversations_count_plus": "{count}+ converses",
     "conversations_count_simple": "{count} converses",

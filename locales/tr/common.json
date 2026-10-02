@@ -239,6 +239,7 @@
     "replied": "Yanıtlandı",
     "forwarded": "İletildi",
     "has_attachment": "Ek içeriyor",
+    "conversations_range": "{total, number} içinde {from}–{to, number}",
     "conversations_count": "{total} konuşmadan {count} tanesi",
     "conversations_count_plus": "{count}+ konuşma",
     "conversations_count_simple": "{count} konuşma",

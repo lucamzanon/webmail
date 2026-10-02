@@ -920,12 +920,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
     onGoToMailbox: (target: GoToMailboxTarget) => {
       if (isScheduledView && target !== 'inbox') return;
       if (target === 'starred') {
-        if (showCrossStarred) {
-          void handleMailboxSelect(CROSS_VIEW_IDS.starred);
-          return;
-        }
-        setSearchFilters({ ...DEFAULT_SEARCH_FILTERS, isStarred: true });
-        void handleAdvancedSearch();
+        goToStarred();
         return;
       }
       const roleFor = { inbox: 'inbox', sent: 'sent', drafts: 'drafts' } as const;
@@ -3202,6 +3197,18 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
     }
   };
 
+  // Gmail's Starred: the "All starred" view when the user has one, otherwise
+  // the advanced-search star toggle, which shows the same messages as a
+  // search. Used by `g s` and by the Gmail skin's Starred row.
+  const goToStarred = () => {
+    if (showCrossStarred) {
+      void handleMailboxSelect(CROSS_VIEW_IDS.starred);
+      return;
+    }
+    setSearchFilters({ ...DEFAULT_SEARCH_FILTERS, isStarred: true });
+    void handleAdvancedSearch();
+  };
+
   const handleAdvancedSearch = async () => {
     if (!client) return;
     await advancedSearch(client);
@@ -3999,6 +4006,7 @@ export function MailApp({ linkSegments: routeSegments }: MailAppProps = {}) {
               crossAccountActive={crossAccountActive}
               showCrossUnread={showCrossUnread}
               showCrossStarred={showCrossStarred}
+              onOpenStarred={gmailShell ? goToStarred : undefined}
               showCrossAll={showCrossAll}
               crossUnreadCount={crossUnreadCount}
               onMailboxSelect={handleMailboxSelect}

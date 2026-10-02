@@ -239,6 +239,7 @@
     "replied": "Zodpovedané",
     "forwarded": "Preposlané",
     "has_attachment": "Obsahuje prílohu",
+    "conversations_range": "{from}–{to, number} z {total, number}",
     "conversations_count": "{count} z {total} konverzácií",
     "conversations_count_plus": "{count}+ konverzácií",
     "conversations_count_simple": "{count} konverzácií",

@@ -239,6 +239,7 @@
     "replied": "Răspuns",
     "forwarded": "Redirecționat",
     "has_attachment": "Cu atașament",
+    "conversations_range": "{from}–{to, number} din {total, number}",
     "conversations_count": "{count} din conversațiile de pe {total}",
     "conversations_count_plus": "{count}+ conversations",
     "conversations_count_simple": "{count} conversații",

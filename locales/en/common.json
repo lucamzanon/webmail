@@ -239,6 +239,7 @@
     "replied": "Replied",
     "forwarded": "Forwarded",
     "has_attachment": "Has attachment",
+    "conversations_range": "{from}–{to, number} of {total, number}",
     "conversations_count": "{count} of {total} conversations",
     "conversations_count_plus": "{count}+ conversations",
     "conversations_count_simple": "{count} conversations",

@@ -239,6 +239,7 @@
     "replied": "Odpowiedziano",
     "forwarded": "Przekazano",
     "has_attachment": "Z załącznikiem",
+    "conversations_range": "{from}–{to, number} z {total, number}",
     "conversations_count": "{count} z {total} konwersacji",
     "conversations_count_plus": "{count}+ konwersacji",
     "conversations_count_simple": "{count} konwersacji",
