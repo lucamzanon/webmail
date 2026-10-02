@@ -763,7 +763,8 @@ export function EmailViewer({
   // Gmail's conversation view: an icon-only toolbar at the top, and Reply /
   // Reply all / Forward as buttons under the message rather than in the bar.
   const gmailViewer = uiSkin === 'gmail' && !isMobile;
-  const showToolbarLabels = showToolbarLabelsSetting && !gmailViewer;
+  // Gmail's toolbars are icon-only, on the phone as on the desktop.
+  const showToolbarLabels = showToolbarLabelsSetting && uiSkin !== 'gmail';
   // Inside a Pro pane, `isMobile` above is pane-width based: overlays that
   // would go viewport-fixed must instead cover just the pane (via
   // PaneOverlay + absolute positioning), and viewport CSS breakpoints like
@@ -3388,7 +3389,7 @@ export function EmailViewer({
             onClick={() => { setMoreMenuOpen(!moreMenuOpen); setMoreMenuSlideEnabled(true); setMoreMenuSub(null); setTagMenuOpen(false); setMoveMenuOpen(false); }}
           >
             <MoreVertical className="w-4 h-4 text-muted-foreground" />
-            <span className="text-[10px] leading-tight sm:hidden">{t('more_actions')}</span>
+            {uiSkin !== 'gmail' && <span className="text-[10px] leading-tight sm:hidden">{t('more_actions')}</span>}
           </Button>
           {moreMenuOpen && !isMobile && (
             <div
