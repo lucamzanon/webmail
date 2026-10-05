@@ -763,6 +763,10 @@ export function EmailViewer({
   // Gmail's conversation view: an icon-only toolbar at the top, and Reply /
   // Reply all / Forward as buttons under the message rather than in the bar.
   const gmailViewer = uiSkin === 'gmail' && !isMobile;
+  // On the phone too Gmail ends the message with Reply / Reply all / Forward
+  // and has no bar fixed at the bottom; previous / next move to the top bar.
+  const gmailMobileViewer = uiSkin === 'gmail' && isMobile;
+  const gmailReplyRow = gmailViewer || gmailMobileViewer;
   // Gmail's toolbars are icon-only, on the phone as on the desktop.
   const showToolbarLabels = showToolbarLabelsSetting && uiSkin !== 'gmail';
   // Inside a Pro pane, `isMobile` above is pane-width based: overlays that
@@ -3067,6 +3071,32 @@ export function EmailViewer({
             <ChevronLeft className="w-5 h-5" />
           </Button>
         )}
+        {showBackButton && gmailMobileViewer && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onNavigatePrev}
+              disabled={!onNavigatePrev}
+              className="h-9 w-9 flex-shrink-0"
+              aria-label={t('tooltips.previous')}
+              title={t('tooltips.previous')}
+            >
+              <ChevronUp className="w-5 h-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onNavigateNext}
+              disabled={!onNavigateNext}
+              className="h-9 w-9 flex-shrink-0"
+              aria-label={t('tooltips.next')}
+              title={t('tooltips.next')}
+            >
+              <ChevronDown className="w-5 h-5" />
+            </Button>
+          </>
+        )}
         {isScheduled && canCancelScheduled && (
           <>
             <Button
@@ -4040,7 +4070,7 @@ export function EmailViewer({
       )}
 
       {/* Email Content Area */}
-      <div className={cn("flex-1 overflow-auto overscroll-contain bg-muted/30", isMobile && "pb-[calc(3.25rem+env(safe-area-inset-bottom)/2)] sm:pb-0")}>
+      <div className={cn("flex-1 overflow-auto overscroll-contain bg-muted/30", isMobile && !gmailMobileViewer && "pb-[calc(3.25rem+env(safe-area-inset-bottom)/2)] sm:pb-0")}>
       <div className="min-h-full flex flex-col">
 
       {/* === SENDER INFO (Desktop) === */}
@@ -5359,8 +5389,8 @@ export function EmailViewer({
           <PluginSlot name="email-footer" />
 
           {/* Gmail skin: Reply / Reply all / Forward under the message, as Gmail lays them out. */}
-          {gmailViewer && !isDraft && !isScheduled && !isBodyLoading && (effectiveEmailContent.isHtml ? iframeReady : true) && (
-            <div className="flex flex-wrap items-center gap-2 px-6 pb-6 pt-2" data-skin-reply-row="">
+          {gmailReplyRow && !isDraft && !isScheduled && !isBodyLoading && (effectiveEmailContent.isHtml ? iframeReady : true) && (
+            <div className={cn("flex flex-wrap items-center gap-2 pb-6 pt-2", isMobile ? "px-4" : "px-6")} data-skin-reply-row="">
               <Button variant="outline" className="h-9 rounded-full px-5 gap-2" onClick={() => onReply?.()}>
                 <Reply className="w-4 h-4" />
                 {t('reply')}
@@ -5377,7 +5407,7 @@ export function EmailViewer({
           )}
 
           {/* Quick Reply Section - hidden for drafts and while loading a new email */}
-          {!gmailViewer && !isDraft && !isScheduled && !isBodyLoading && (effectiveEmailContent.isHtml ? iframeReady : true) && (<div className="bg-background border-t border-border px-6 mt-auto" style={{ paddingBlock: 'var(--density-header-py)' }}>
+          {!gmailReplyRow && !isDraft && !isScheduled && !isBodyLoading && (effectiveEmailContent.isHtml ? iframeReady : true) && (<div className="bg-background border-t border-border px-6 mt-auto" style={{ paddingBlock: 'var(--density-header-py)' }}>
             <div className="flex items-start" style={{ gap: 'var(--density-item-gap)' }}>
               <div className="flex-shrink-0">
                 <Avatar
@@ -5524,7 +5554,7 @@ export function EmailViewer({
     {/* Mobile bottom action bar - pane-scoped inside a Pro pane (the
         viewport `sm:hidden` guard would otherwise hide it there, and
         `fixed` would span the whole app instead of the pane). */}
-    {isMobile && (
+    {isMobile && !gmailMobileViewer && (
       <nav className={cn(
         "z-50 bg-background border-t border-border overflow-hidden pb-[calc(env(safe-area-inset-bottom)/2)]",
         isPaneScoped ? "absolute bottom-0 left-0 right-0" : "fixed bottom-0 left-0 right-0 sm:hidden",
