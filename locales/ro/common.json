@@ -1081,7 +1081,7 @@
         "label": "Aspectul interfeței",
         "description": "Unde se află căutarea, navigarea și barele de instrumente",
         "bulwark": "Implicit",
-        "gmail": "Stil Gmail"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Activați animațiile",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Extindeți/reduceți firul de discuție",
-      "select_gmail_skin": "Selectează conversația (aspect Gmail)"
+      "select_gmail_skin": "Selectează conversația (aspect Mountain View)"
     },
     "composer": {
       "send": "Trimite e-mail",

@@ -1081,7 +1081,7 @@
         "label": "Interface layout",
         "description": "Where search, navigation and toolbars sit",
         "bulwark": "Default",
-        "gmail": "Gmail-style"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Enable Animations",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Expand/collapse thread",
-      "select_gmail_skin": "Select the conversation (Gmail skin)"
+      "select_gmail_skin": "Select the conversation (Mountain View skin)"
     },
     "composer": {
       "send": "Send email",

@@ -1081,7 +1081,7 @@
         "label": "Disposició de la interfície",
         "description": "On se situen la cerca, la navegació i les barres d'eines",
         "bulwark": "Predeterminat",
-        "gmail": "Estil Gmail"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Activa les animacions",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Desplega/replega el fil",
-      "select_gmail_skin": "Selecciona la conversa (skin de Gmail)"
+      "select_gmail_skin": "Selecciona la conversa (skin de Mountain View)"
     },
     "composer": {
       "send": "Envia el correu",

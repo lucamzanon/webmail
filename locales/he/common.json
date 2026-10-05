@@ -1043,7 +1043,7 @@
         "label": "פריסת הממשק",
         "description": "היכן ממוקמים החיפוש, הניווט וסרגלי הכלים",
         "bulwark": "ברירת מחדל",
-        "gmail": "סגנון Gmail"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "הפעל אנימציות",
@@ -2418,7 +2418,7 @@
     },
     "threads": {
       "expand_collapse": "הרחב/כווץ את השרשור",
-      "select_gmail_skin": "בחירת השיחה (עיצוב Gmail)"
+      "select_gmail_skin": "בחירת השיחה (עיצוב Mountain View)"
     },
     "composer": {
       "template_picker": "פתח את בוחר התבניות",

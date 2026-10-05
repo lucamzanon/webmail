@@ -1081,7 +1081,7 @@
         "label": "تخطيط الواجهة",
         "description": "موضع البحث والتنقل وأشرطة الأدوات",
         "bulwark": "افتراضي",
-        "gmail": "بنمط Gmail"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "تفعيل الحركات",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "توسيع/طي المحادثة",
-      "select_gmail_skin": "تحديد المحادثة (مظهر Gmail)"
+      "select_gmail_skin": "تحديد المحادثة (مظهر Mountain View)"
     },
     "composer": {
       "send": "إرسال الرسالة",

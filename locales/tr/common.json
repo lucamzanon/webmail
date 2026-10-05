@@ -1078,7 +1078,7 @@
         "label": "Arayüz düzeni",
         "description": "Arama, gezinme ve araç çubuklarının konumu",
         "bulwark": "Varsayılan",
-        "gmail": "Gmail tarzı"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Animasyonları Etkinleştir",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "İleti dizisini genişlet/daralt",
-      "select_gmail_skin": "Konuşmayı seç (Gmail teması)"
+      "select_gmail_skin": "Konuşmayı seç (Mountain View teması)"
     },
     "composer": {
       "send": "E-posta gönder",

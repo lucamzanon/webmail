@@ -1078,7 +1078,7 @@
         "label": "Макет інтерфейсу",
         "description": "Де розташовані пошук, навігація та панелі інструментів",
         "bulwark": "За замовчуванням",
-        "gmail": "У стилі Gmail"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Увімкнути анімацію",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Розгорнути/згорнути ланцюжок",
-      "select_gmail_skin": "Вибрати листування (оформлення Gmail)"
+      "select_gmail_skin": "Вибрати листування (оформлення Mountain View)"
     },
     "composer": {
       "send": "Надіслати лист",

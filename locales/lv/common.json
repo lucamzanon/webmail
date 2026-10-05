@@ -1078,7 +1078,7 @@
         "label": "Saskarnes izkārtojums",
         "description": "Kur atrodas meklēšana, navigācija un rīkjoslas",
         "bulwark": "Noklusējuma",
-        "gmail": "Gmail stils"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Iespējot animācijas",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Izvērst/sairt sarunu",
-      "select_gmail_skin": "Atlasīt sarunu (Gmail izskats)"
+      "select_gmail_skin": "Atlasīt sarunu (Mountain View izskats)"
     },
     "composer": {
       "send": "Nosūtīt e-pastu",

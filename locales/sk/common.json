@@ -1081,7 +1081,7 @@
         "label": "Rozloženie rozhrania",
         "description": "Kde sa nachádza hľadanie, navigácia a panely nástrojov",
         "bulwark": "Predvolené",
-        "gmail": "Štýl Gmailu"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Povoliť animácie",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Rozbaliť/zbaliť vlákno",
-      "select_gmail_skin": "Vybrať konverzáciu (vzhľad Gmailu)"
+      "select_gmail_skin": "Vybrať konverzáciu (vzhľad Mountain Viewu)"
     },
     "composer": {
       "send": "Odoslať e-mail",

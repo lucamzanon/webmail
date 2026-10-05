@@ -1081,7 +1081,7 @@
         "label": "介面版面配置",
         "description": "搜尋、導覽與工具列的位置",
         "bulwark": "預設",
-        "gmail": "Gmail 風格"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "啟用動畫",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "展開／收合對話串",
-      "select_gmail_skin": "選取會話（Gmail 外觀）"
+      "select_gmail_skin": "選取會話（Mountain View 外觀）"
     },
     "composer": {
       "send": "傳送郵件",

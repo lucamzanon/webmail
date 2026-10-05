@@ -1078,7 +1078,7 @@
         "label": "インターフェースのレイアウト",
         "description": "検索・ナビゲーション・ツールバーの配置",
         "bulwark": "デフォルト",
-        "gmail": "Gmail スタイル"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "アニメーションを有効にする",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "スレッドの展開/折りたたみ",
-      "select_gmail_skin": "スレッドを選択（Gmail スキン）"
+      "select_gmail_skin": "スレッドを選択（Mountain View スキン）"
     },
     "composer": {
       "send": "メールを送信",

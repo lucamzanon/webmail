@@ -1081,7 +1081,7 @@
         "label": "چیدمان رابط",
         "description": "جای جست‌وجو، ناوبری و نوارهای ابزار",
         "bulwark": "پیش‌فرض",
-        "gmail": "سبک Gmail"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "فعال کردن انیمیشن‌ها",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "باز/بسته کردن رشته",
-      "select_gmail_skin": "انتخاب گفت‌وگو (پوستهٔ Gmail)"
+      "select_gmail_skin": "انتخاب گفت‌وگو (پوستهٔ Mountain View)"
     },
     "composer": {
       "send": "ارسال ایمیل",

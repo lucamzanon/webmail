@@ -1081,7 +1081,7 @@
         "label": "Felület elrendezése",
         "description": "Hol helyezkedik el a keresés, a navigáció és az eszköztárak",
         "bulwark": "Alapértelmezett",
-        "gmail": "Gmail-stílus"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Animációk engedélyezése",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Beszélgetés kibontása/összecsukása",
-      "select_gmail_skin": "Beszélgetés kijelölése (Gmail-kinézet)"
+      "select_gmail_skin": "Beszélgetés kijelölése (Mountain View-kinézet)"
     },
     "composer": {
       "send": "E-mail küldése",

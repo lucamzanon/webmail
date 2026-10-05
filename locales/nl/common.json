@@ -1078,7 +1078,7 @@
         "label": "Interface-indeling",
         "description": "Waar zoeken, navigatie en werkbalken staan",
         "bulwark": "Standaard",
-        "gmail": "Gmail-stijl"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Animaties inschakelen",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Gesprek uitklappen/inklappen",
-      "select_gmail_skin": "Gesprek selecteren (Gmail-skin)"
+      "select_gmail_skin": "Gesprek selecteren (Mountain View-skin)"
     },
     "composer": {
       "send": "E-mail verzenden",

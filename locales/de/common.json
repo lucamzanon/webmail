@@ -1078,7 +1078,7 @@
         "label": "Oberflächen-Layout",
         "description": "Wo Suche, Navigation und Symbolleisten liegen",
         "bulwark": "Standard",
-        "gmail": "Gmail-Stil"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Animationen aktivieren",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Unterhaltung erweitern/einklappen",
-      "select_gmail_skin": "Konversation auswählen (Gmail-Skin)"
+      "select_gmail_skin": "Konversation auswählen (Mountain View-Skin)"
     },
     "composer": {
       "send": "E-Mail senden",

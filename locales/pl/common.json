@@ -1078,7 +1078,7 @@
         "label": "Układ interfejsu",
         "description": "Gdzie znajdują się wyszukiwarka, nawigacja i paski narzędzi",
         "bulwark": "Domyślny",
-        "gmail": "Styl Gmaila"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Włącz animacje",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Rozwiń/zwiń wątek",
-      "select_gmail_skin": "Zaznacz konwersację (skórka Gmaila)"
+      "select_gmail_skin": "Zaznacz konwersację (skórka Mountain Viewa)"
     },
     "composer": {
       "send": "Wyślij e-mail",

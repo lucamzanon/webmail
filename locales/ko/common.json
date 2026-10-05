@@ -1078,7 +1078,7 @@
         "label": "인터페이스 레이아웃",
         "description": "검색, 탐색, 도구 모음의 위치",
         "bulwark": "기본",
-        "gmail": "Gmail 스타일"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "애니메이션 켜기",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "대화 펼치기/접기",
-      "select_gmail_skin": "대화 선택 (Gmail 스킨)"
+      "select_gmail_skin": "대화 선택 (Mountain View 스킨)"
     },
     "composer": {
       "send": "이메일 보내기",

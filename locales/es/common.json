@@ -1078,7 +1078,7 @@
         "label": "Diseño de la interfaz",
         "description": "Dónde se sitúan la búsqueda, la navegación y las barras de herramientas",
         "bulwark": "Predeterminado",
-        "gmail": "Estilo Gmail"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Habilitar Animaciones",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Expandir/contraer conversación",
-      "select_gmail_skin": "Seleccionar la conversación (skin de Gmail)"
+      "select_gmail_skin": "Seleccionar la conversación (skin de Mountain View)"
     },
     "composer": {
       "send": "Enviar correo",

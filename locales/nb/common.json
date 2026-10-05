@@ -1081,7 +1081,7 @@
         "label": "Grensesnittoppsett",
         "description": "Hvor søk, navigasjon og verktøylinjer ligger",
         "bulwark": "Standard",
-        "gmail": "Gmail-stil"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Aktiver animasjoner",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Utvid eller fold sammen tråden",
-      "select_gmail_skin": "Velg samtalen (Gmail-skin)"
+      "select_gmail_skin": "Velg samtalen (Mountain View-skin)"
     },
     "composer": {
       "send": "Send e-post",

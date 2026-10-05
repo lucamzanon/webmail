@@ -1078,7 +1078,7 @@
         "label": "界面布局",
         "description": "搜索、导航和工具栏的位置",
         "bulwark": "默认",
-        "gmail": "Gmail 风格"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "启用动画",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "展开/折叠会话",
-      "select_gmail_skin": "选择会话（Gmail 皮肤）"
+      "select_gmail_skin": "选择会话（Mountain View 皮肤）"
     },
     "composer": {
       "send": "发送邮件",

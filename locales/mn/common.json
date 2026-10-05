@@ -1081,7 +1081,7 @@
         "label": "Интерфейсийн байрлал",
         "description": "Хайлт, навигаци, хэрэгслийн мөр хаана байрлах",
         "bulwark": "Үндсэн",
-        "gmail": "Gmail загвар"
+        "gmail": "Mountain View"
       },
       "animations": {
         "label": "Анимацийг идэвхжүүлэх",
@@ -2494,7 +2494,7 @@
     },
     "threads": {
       "expand_collapse": "Хэлхээсийг дэлгэх/хумих",
-      "select_gmail_skin": "Харилцааг сонгох (Gmail загвар)"
+      "select_gmail_skin": "Харилцааг сонгох (Mountain View загвар)"
     },
     "composer": {
       "send": "Имэйл илгээх",
