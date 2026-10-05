@@ -109,6 +109,10 @@ async function phone(browser) {
     const stars = row.querySelectorAll('button[aria-pressed]');
     return stars.length === 1 && !!stars[0].parentElement?.querySelector('p');
   }));
+  await page.locator('[data-email-id]').first().click();
+  await page.locator('[data-skin-reply-row]').waitFor({ timeout: 30_000 }).catch(() => {});
+  check('phone: the message ends with Reply / Reply all / Forward', await page.locator('[data-skin-reply-row] button').count() === 3);
+  check('phone: no bottom bar over the message', await page.locator('nav.fixed.bottom-0').count() === 0);
   check('phone: no page errors', errors.length === 0, errors[0] ?? '');
   await context.close();
 }

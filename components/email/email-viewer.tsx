@@ -15,7 +15,7 @@ import { buildContactsPath, buildMailPath } from "@/lib/deep-links";
 import { useCopyLink } from "@/hooks/use-copy-link";
 import { Button } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
-import { formatFileSize, cn, buildMailboxTree, MailboxNode, formatDateTime, generateUUID } from "@/lib/utils";
+import { formatFileSize, cn, buildMailboxTree, MailboxNode, formatDate, formatDateTime, generateUUID } from "@/lib/utils";
 import { emailDisplayDate } from "@/lib/email-date";
 import { TagBadge } from "./tag-badge";
 import { TagPicker } from "./tag-picker";
@@ -4402,8 +4402,8 @@ export function EmailViewer({
                   />
                 )}
               </div>
-              {/* Email address under name */}
-              {sender?.email && sender?.name && (
+              {/* Email address under name - Gmail's app keeps it in the details */}
+              {!gmailMobileViewer && sender?.email && sender?.name && (
                 <div className="text-xs text-muted-foreground mt-0.5 truncate">{sender.email}</div>
               )}
               {/* Row 2: Recipients */}
@@ -4445,9 +4445,11 @@ export function EmailViewer({
             {/* Date/time + size on the right (mobile) */}
             <div className="sm:hidden flex-shrink-0 text-end ms-2">
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                {formatDateTime(emailDisplayDate(email), timeFormat, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                {gmailMobileViewer
+                  ? formatDate(emailDisplayDate(email))
+                  : formatDateTime(emailDisplayDate(email), timeFormat, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
               </span>
-              {email.size > 0 && (
+              {email.size > 0 && !gmailMobileViewer && (
                 <div className="text-xs text-muted-foreground/60">
                   {formatFileSize(email.size)}
                 </div>
@@ -5390,16 +5392,19 @@ export function EmailViewer({
 
           {/* Gmail skin: Reply / Reply all / Forward under the message, as Gmail lays them out. */}
           {gmailReplyRow && !isDraft && !isScheduled && !isBodyLoading && (effectiveEmailContent.isHtml ? iframeReady : true) && (
-            <div className={cn("flex flex-wrap items-center gap-2 pb-6 pt-2", isMobile ? "px-4" : "px-6")} data-skin-reply-row="">
-              <Button variant="outline" className="h-9 rounded-full px-5 gap-2" onClick={() => onReply?.()}>
+            <div
+              className={cn("pb-6 pt-2", isMobile ? "grid grid-cols-3 gap-2 px-4" : "flex flex-wrap items-center gap-2 px-6")}
+              data-skin-reply-row=""
+            >
+              <Button variant="outline" className={cn("h-9 rounded-full gap-2", isMobile ? "min-w-0 px-2 text-xs" : "px-5")} onClick={() => onReply?.()}>
                 <Reply className="w-4 h-4" />
                 {t('reply')}
               </Button>
-              <Button variant="outline" className="h-9 rounded-full px-5 gap-2" onClick={onReplyAll}>
+              <Button variant="outline" className={cn("h-9 rounded-full gap-2", isMobile ? "min-w-0 px-2 text-xs" : "px-5")} onClick={onReplyAll}>
                 <ReplyAll className="w-4 h-4" />
                 {t('reply_all')}
               </Button>
-              <Button variant="outline" className="h-9 rounded-full px-5 gap-2" onClick={onForward}>
+              <Button variant="outline" className={cn("h-9 rounded-full gap-2", isMobile ? "min-w-0 px-2 text-xs" : "px-5")} onClick={onForward}>
                 <Forward className="w-4 h-4" />
                 {t('forward')}
               </Button>
