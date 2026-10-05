@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Check, Folder } from '@/components/icons';
-import { useSettingsStore, type ToolbarPosition, type MailLayout } from '@/stores/settings-store';
+import { useSettingsStore, type ToolbarPosition, type MailLayout, type UiSkin } from '@/stores/settings-store';
 import { SettingsSection, SettingItem, RadioGroup, ToggleSwitch } from './settings-section';
 import { cn } from '@/lib/utils';
 import { usePolicyStore } from '@/stores/policy-store';
@@ -119,7 +119,7 @@ function MailLayoutPreview({
 export function LayoutSettings() {
   const t = useTranslations('settings.appearance');
   const tEmail = useTranslations('settings.email_behavior');
-  const { toolbarPosition, showToolbarLabels, hideAccountSwitcher, showRailAccountList, enableUnifiedMailbox, includeGroupInUnified, unifiedCrossAccount, allMailFolderIds, enableCrossUnreadView, enableCrossStarredView, enableCrossAllView, colorfulSidebarIcons, tintListRowsByTag, tintListRowsByAccount, showFolderTotalCount, faviconUnreadBadge, mailLayout, proInterface, settingsFromMainAccount, updateSetting } = useSettingsStore();
+  const { toolbarPosition, showToolbarLabels, hideAccountSwitcher, showRailAccountList, enableUnifiedMailbox, includeGroupInUnified, unifiedCrossAccount, allMailFolderIds, enableCrossUnreadView, enableCrossStarredView, enableCrossAllView, colorfulSidebarIcons, tintListRowsByTag, tintListRowsByAccount, showFolderTotalCount, faviconUnreadBadge, mailLayout, proInterface, settingsFromMainAccount, uiSkin, updateSetting } = useSettingsStore();
   const { isSettingLocked, isSettingHidden, isFeatureEnabled } = usePolicyStore();
   const accounts = useAccountStore(s => s.accounts);
   const activeAccountId = useAccountStore(s => s.activeAccountId);
@@ -170,6 +170,20 @@ export function LayoutSettings() {
 
   return (
     <SettingsSection title={t('title')} description={t('description')}>
+      {/* The interface style decides where search, navigation and toolbars
+          go - a layout choice, so it leads the Layout tab. */}
+      {!isSettingHidden('uiSkin') && (
+      <SettingItem label={t('ui_skin.label')} description={t('ui_skin.description')} locked={isSettingLocked('uiSkin')}>
+        <RadioGroup
+          value={uiSkin}
+          onChange={(value) => updateSetting('uiSkin', value as UiSkin)}
+          options={[
+            { value: 'bulwark', label: t('ui_skin.bulwark') },
+            { value: 'gmail', label: t('ui_skin.gmail') },
+          ]}
+        />
+      </SettingItem>
+      )}
       {!isSettingHidden('mailLayout') && (
       <SettingItem label={tEmail('mail_layout.label')} description={tEmail('mail_layout.description')} locked={isSettingLocked('mailLayout')}>
         <div className="w-[22rem] max-w-full">
