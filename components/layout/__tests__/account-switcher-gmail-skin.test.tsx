@@ -53,6 +53,34 @@ describe('AccountSwitcher under the Gmail skin', () => {
     expect(screen.getAllByText('a@example.com').length).toBeGreaterThan(0);
   });
 
+  it('draws rows the way Gmail does: no colour stripe, no server line', () => {
+    render(<AccountSwitcher variant="header" />);
+    openPopover();
+
+    const row = screen.getByTestId('account-option');
+    expect(row.getAttribute('style') ?? '').not.toMatch(/border/);
+    // Tailwind's `hidden`: jsdom has no style sheet to compute visibility from.
+    expect(within(row).getByText('mail.example.com').closest('.hidden')).not.toBeNull();
+  });
+
+  it('keeps the server line for an account in trouble', () => {
+    useAccountStore.setState({ accounts: [account('a'), account('b', { hasError: true })] } as never);
+    render(<AccountSwitcher variant="header" />);
+    openPopover();
+
+    expect(within(screen.getByTestId('account-option')).getByText('mail.example.com').closest('.hidden')).toBeNull();
+  });
+
+  it('offers add-account and sign-out-of-all as a pair of pills', () => {
+    render(<AccountSwitcher variant="header" />);
+    openPopover();
+
+    const actions = document.querySelector('[data-skin-account-actions]');
+    expect(actions).not.toBeNull();
+    expect(actions!.querySelectorAll('button')).toHaveLength(2);
+    expect(screen.getAllByTestId('add-account')).toHaveLength(1);
+  });
+
   it('puts the unread waiting in the other account next to it', () => {
     render(<AccountSwitcher variant="header" />);
     openPopover();

@@ -380,7 +380,8 @@ export function AccountSwitcher({
                   data-testid="account-option"
                   data-account-id={account.id}
                   data-account-email={account.email || account.username}
-                  style={{ borderInlineStart: `4px solid ${account.avatarColor}` }}
+                  // Gmail's rows carry no colour stripe: the avatar names the account.
+                  style={gmailPopover ? undefined : { borderInlineStart: `4px solid ${account.avatarColor}` }}
                   className={cn(
                     "w-full flex items-start gap-3 px-3 py-2.5 text-start transition-colors",
                     isActive ? "bg-accent/50" : "hover:bg-muted",
@@ -410,7 +411,9 @@ export function AccountSwitcher({
                     <p className="text-xs text-muted-foreground truncate">
                       {toUnicodeEmail(account.email || account.username)}
                     </p>
-                    <div className="flex items-center gap-1 mt-0.5">
+                    {/* Server and connection state: Gmail shows neither, so the
+                        skin keeps the line only for an account in trouble. */}
+                    <div className={cn("flex items-center gap-1 mt-0.5", gmailPopover && !account.hasError && "hidden")}>
                       {account.hasError ? (
                         <AlertCircle className="w-3 h-3 text-destructive" />
                       ) : (
@@ -450,8 +453,36 @@ export function AccountSwitcher({
             })}
           </div>
 
+          {/* Gmail: "Add another account" and "Sign out of all accounts" as two
+              pills side by side. */}
+          {gmailPopover && (
+            <div className="flex flex-wrap items-center justify-center gap-2 border-t border-border px-4 py-3" data-skin-account-actions="">
+              {accounts.length < getMaxAccounts() && (
+                <button
+                  onClick={handleAddAccount}
+                  data-testid="add-account"
+                  className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
+                  role="menuitem"
+                >
+                  <Plus className="w-4 h-4" />
+                  {t("add_account")}
+                </button>
+              )}
+              {accounts.length > 1 && (
+                <button
+                  onClick={handleLogoutAll}
+                  className="flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
+                  role="menuitem"
+                >
+                  <LogOut className="w-4 h-4" />
+                  {t("sign_out_all")}
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Separator + Add Account */}
-          {accounts.length < getMaxAccounts() && (
+          {!gmailPopover && accounts.length < getMaxAccounts() && (
             <div className="border-t border-border">
               <button
                 onClick={handleAddAccount}
@@ -485,7 +516,7 @@ export function AccountSwitcher({
               <LogOut className="w-4 h-4" />
               {t("sign_out_of", { account: displayEmail })}
             </button>
-            {accounts.length > 1 && (
+            {!gmailPopover && accounts.length > 1 && (
               <button
                 onClick={handleLogoutAll}
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-muted transition-colors"
